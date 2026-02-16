@@ -1,0 +1,20 @@
+{
+  "name": "response-templates-forge",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/index.js",
+  "scripts": {
+    "deploy": "forge deploy",
+    "forge:install": "forge install",
+    "forge:upgrade": "forge install --upgrade",
+    "tunnel": "forge tunnel",
+    "lint": "forge lint",
+    "ui:install": "cd static/forge-angular-app && npm install --legacy-peer-deps",
+    "ui:build": "cd static/forge-angular-app && NODE_OPTIONS=--openssl-legacy-provider npx ng build --configuration production --base-href ./ --deploy-url ./",
+    "ui:build:watch": "cd static/forge-angular-app && NODE_OPTIONS=--openssl-legacy-provider npx ng build --watch --configuration development --base-href ./ --deploy-url ./"
+  },
+  "dependencies": {
+    "@forge/api": "^5.1.0",
+    "@forge/resolver": "^1.7.0"
+  }
+}
