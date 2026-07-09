@@ -3,3 +3,6 @@ dist/
 .vscode/
 .DS_Store
 .env
+static/forge-angular-app/dist/
+static/forge-angular-app/node_modules/
+static/forge-angular-app
