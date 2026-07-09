@@ -1,0 +1,105 @@
+modules:
+  jira:projectPage:
+    - key: response-templates-project-forge
+      resource: main
+      resolver:
+        function: resolver
+      title: Response Templates
+      layout: blank
+      icon: https://response-templates.appbox.ai/assets/images/response-template-dark.svg
+      displayConditions:
+        or:
+          not:
+            entityPropertyExists:
+              entity: project
+              propertyKey: com.appbox.ai.response.templates_project-admin-settings
+          and:
+            entityPropertyExists:
+              entity: project
+              propertyKey: com.appbox.ai.response.templates_project-admin-settings
+            entityPropertyEqualTo:
+              entity: project
+              propertyKey: com.appbox.ai.response.templates_project-admin-settings
+              objectName: responseTemplatesEnabled
+              value: "true"
+  jira:issuePanel:
+    - key: response-templates-issue-panel
+      resource: main
+      resolver:
+        function: resolver
+      title: Response Templates
+      icon: https://response-templates.appbox.ai/assets/images/response-template-dark.svg
+      displayConditions:
+        or:
+          not:
+            entityPropertyExists:
+              entity: project
+              propertyKey: com.appbox.ai.response.templates_project-admin-settings
+          and:
+            entityPropertyExists:
+              entity: project
+              propertyKey: com.appbox.ai.response.templates_project-admin-settings
+            entityPropertyEqualTo:
+              entity: project
+              propertyKey: com.appbox.ai.response.templates_project-admin-settings
+              objectName: responseTemplatesEnabled
+              value: "true"
+  jira:issueAction:
+    - key: response-templates-issue-action
+      resource: main
+      resolver:
+        function: resolver
+      title: Add Response
+      icon: https://response-templates.appbox.ai/assets/images/response-template-dark.svg
+      displayConditions:
+        or:
+          not:
+            entityPropertyExists:
+              entity: project
+              propertyKey: com.appbox.ai.response.templates_project-admin-settings
+          and:
+            entityPropertyExists:
+              entity: project
+              propertyKey: com.appbox.ai.response.templates_project-admin-settings
+            entityPropertyEqualTo:
+              entity: project
+              propertyKey: com.appbox.ai.response.templates_project-admin-settings
+              objectName: responseTemplatesEnabled
+              value: "true"
+  jira:adminPage:
+    - key: response-templates-admin
+      resource: main
+      resolver:
+        function: resolver
+      title: Response Templates for Jira - Admin Panel
+      layout: blank
+      icon: https://response-templates.appbox.ai/assets/images/response-template-dark.svg
+  function:
+    - key: resolver
+      handler: index.handler
+
+resources:
+  - key: main
+    path: static/forge-angular-app/dist/response-templates
+
+app:
+  # Update this to the Forge app ARI for the free marketplace listing.
+  id: ari:cloud:ecosystem::app/REPLACE_WITH_FREE_APP_ID
+  connect:
+    key: com.appbox.ai.response.templates.free
+  runtime:
+    name: nodejs20.x
+  licensing:
+    enabled: false
+permissions:
+  scopes:
+    - read:jira-work
+    - write:jira-work
+    - manage:jira-project
+    - read:jira-user
+  content:
+    styles:
+      - unsafe-inline
+  external:
+    frames:
+      - address: https://jira-editor.appbox.ai
