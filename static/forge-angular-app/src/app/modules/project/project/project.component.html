@@ -1,0 +1,42 @@
+<div class="project-root">
+  <nav class="navbar navbar-expand-lg navbar-light bg-light pb-0 pt-0">
+    <div class="container-fluid p-4 px-5">
+      <h1 class="navbar-brand mr-2 ms-2 pt-2 pb-0">
+        {{ Environment.APP_NAME }}
+      </h1>
+      <div class="navbar-collapse collapse text-black-50">&nbsp;Projects / {{ projectKey }}</div>
+      <div class="navbar-collapse collapse order-3 justify-content-end">
+        <ul class="navbar-nav ml-auto app-right-links">
+          <li class="nav-item">
+            <a class="nav-link" href="https://support.appbox.ai/docs/response-template-for-jira/" target="_blank" ngbTooltip="Response Template Help">
+              <i class="far fa-question-circle"></i>
+              Help
+            </a>
+          </li>
+          <li>
+            <button class="btn btn-link text-dark" [matMenuTriggerFor]="beforeMenu"><i class="fa fa-ellipsis-v"></i></button>
+            <mat-menu class="project-help-menu" #beforeMenu="matMenu" xPosition="before">
+              <a class="nav-link text-dark" href="https://support.appbox.ai/docs/response-template-for-jira/" target="_blank">
+                <i class="far fa-flag"></i>
+                Getting Started
+              </a>
+              <a class="nav-link text-dark" href="https://support.appbox.ai/servicedesk/response-template" target="_blank">
+                <i class="far fa-life-ring"></i>
+                Contact Support
+              </a>
+            </mat-menu>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+  <nav mat-tab-nav-bar *ngIf="isAdmin" class="mx-5 mt-2">
+    <a mat-tab-link *ngFor="let link of links" [routerLink]="link.route" (click)="activeLink = link" [active]="activeLink == link">
+      <i class="{{ link.icon }}"></i>
+      &nbsp; {{ link.label }}
+    </a>
+  </nav>
+  <div class="project-root-container px-5 pb-5">
+    <router-outlet></router-outlet>
+  </div>
+</div>

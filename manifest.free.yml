@@ -88,7 +88,7 @@ app:
   connect:
     key: com.appbox.ai.response.templates.free
   runtime:
-    name: nodejs20.x
+    name: nodejs22.x
   licensing:
     enabled: false
 permissions:
@@ -100,6 +100,8 @@ permissions:
   content:
     styles:
       - unsafe-inline
+    scripts:
+      - unsafe-eval
   external:
     frames:
       - address: https://jira-editor.appbox.ai

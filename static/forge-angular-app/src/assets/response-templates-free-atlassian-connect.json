@@ -1,0 +1,202 @@
+{
+  "name": "Response Templates for JIRA. Free",
+  "description": "Use Canned responses to quickly respond.",
+  "key": "com.appbox.ai.response.templates.free",
+  "baseUrl": "https://response-templates-free.appbox.ai",
+  "vendor": {
+    "name": "Appbox.ai",
+    "url": "https://appbox.ai"
+  },
+  "authentication": {
+    "type": "jwt"
+  },
+  "apiMigrations": {
+    "context-qsh": true,
+    "signed-install": false
+  },
+  "lifecycle": {
+    "installed": "/api/installed",
+    "uninstalled": "/api/uninstalled"
+  },
+  "scopes": [
+    "READ",
+    "WRITE",
+    "DELETE"
+  ],
+  "apiVersion": 1,
+  "modules": {
+    "jiraProjectPages": [
+      {
+        "url": "/index.html?projectKey=${project.key}&projectId=${project.id}#/project/${project.id}/templates",
+        "iconUrl": "/assets/images/response-template-dark.svg",
+        "weight": 100,
+        "name": {
+          "value": "Response Templates"
+        },
+        "key": "response-templates-project",
+        "conditions": [
+          {
+            "condition": "user_is_logged_in"
+          },
+          {
+            "or": [
+              {
+                "condition": "entity_property_equal_to",
+                "params": {
+                  "entity": "project",
+                  "propertyKey": "com.appbox.ai.response.templates_project-admin-settings",
+                  "objectName": "responseTemplatesEnabled",
+                  "value": "true"
+                }
+              },
+              {
+                "condition": "entity_property_exists",
+                "invert": true,
+                "params": {
+                  "entity": "project",
+                  "propertyKey": "com.appbox.ai.response.templates_project-admin-settings"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "webPanels": [
+      {
+        "url": "/index.html?projectKey=${project.key}&projectId=${project.id}#/ticket/response",
+        "location": "atl.jira.view.issue.left.context",
+        "weight": 200,
+        "name": {
+          "value": "Response Templates"
+        },
+        "key": "rt-left-rt-list",
+        "conditions": [
+          {
+            "condition": "user_is_logged_in"
+          },
+          {
+            "or": [
+              {
+                "condition": "entity_property_equal_to",
+                "params": {
+                  "entity": "project",
+                  "propertyKey": "com.appbox.ai.response.templates_project-admin-settings",
+                  "objectName": "responseTemplatesEnabled",
+                  "value": "true"
+                }
+              },
+              {
+                "condition": "entity_property_exists",
+                "invert": true,
+                "params": {
+                  "entity": "project",
+                  "propertyKey": "com.appbox.ai.response.templates_project-admin-settings"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "jiraIssueContents": [
+      {
+        "key": "rt-ticket-button",
+        "name": {
+          "value": "Response Templates"
+        },
+        "icon": {
+          "width": 24,
+          "height": 24,
+          "url": "/assets/images/response-template-dark.svg"
+        },
+        "target": {
+          "type": "web_panel",
+          "url": "/index.html?projectKey=${project.key}&projectId=${project.id}#/ticket/response"
+        },
+        "tooltip": {
+          "value": "Add Response"
+        },
+        "contentPresentConditions": [
+          {
+            "condition": "user_is_logged_in"
+          },
+          {
+            "or": [
+              {
+                "condition": "entity_property_equal_to",
+                "params": {
+                  "entity": "project",
+                  "propertyKey": "com.appbox.ai.response.templates_project-admin-settings",
+                  "objectName": "responseTemplatesEnabled",
+                  "value": "true"
+                }
+              },
+              {
+                "condition": "entity_property_exists",
+                "invert": true,
+                "params": {
+                  "entity": "project",
+                  "propertyKey": "com.appbox.ai.response.templates_project-admin-settings"
+                }
+              }
+            ]
+          }
+        ],
+        "conditions": [
+          {
+            "condition": "user_is_logged_in"
+          },
+          {
+            "or": [
+              {
+                "condition": "entity_property_equal_to",
+                "params": {
+                  "entity": "project",
+                  "propertyKey": "com.appbox.ai.response.templates_project-admin-settings",
+                  "objectName": "responseTemplatesEnabled",
+                  "value": "true"
+                }
+              },
+              {
+                "condition": "entity_property_exists",
+                "invert": true,
+                "params": {
+                  "entity": "project",
+                  "propertyKey": "com.appbox.ai.response.templates_project-admin-settings"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    ],
+    "webSections": [
+      {
+        "key": "response-templates-section",
+        "location": "admin_plugins_menu",
+        "name": {
+          "value": "Response Templates"
+        }
+      }
+    ],
+    "adminPages": [
+      {
+        "url": "/index.html#/app-admin-panel/project-enablement",
+        "location": "admin_plugins_menu/response-templates-section",
+        "name": {
+          "value": "Project Enablement"
+        },
+        "key": "project-enablement"
+      },
+      {
+        "url": "/index.html#/app-admin-panel/global-templates",
+        "location": "admin_plugins_menu/response-templates-section",
+        "name": {
+          "value": "Global Templates"
+        },
+        "key": "global-templates"
+      }
+    ]
+  }
+}

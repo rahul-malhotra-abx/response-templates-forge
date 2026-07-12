@@ -1,0 +1,64 @@
+<h1 mat-dialog-title>
+  <i class="fa fa-pencil-alt text-black-50"></i>
+  &nbsp;
+  <span class="text-muted">{{ dataFromPatent.newTemplate ? 'New' : 'Edit' }} template:</span>
+  <span>{{ template.name }}</span>
+</h1>
+<div mat-dialog-content class="py-1">
+  <form>
+    <div class="row">
+      <div class="col-12">
+        <label for="template-name" class="form-label">
+          Name
+          <span ngbTooltip="Required Field" class="text-danger">*</span>
+        </label>
+        <input
+          type="text"
+          class="form-control"
+          placeholder="Name your template."
+          id="template-name"
+          autocomplete="off"
+          name="templateName"
+          [(ngModel)]="template.name"
+          [maxLength]="DefaultLimits.TEMPLATE_NAME" />
+      </div>
+      <div class="col-12 mt-4">
+        <label for="template-scope" class="form-label">Scope</label>
+        <input disabled="disabled" class="form-control" id="template-scope" autocomplete="off" name="templateScope" [(ngModel)]="template.scope" />
+      </div>
+      <div class="col-12 mt-4">
+        <label class="form-label">
+          Content
+          <span ngbTooltip="Required Field" class="text-danger">*</span>
+        </label>
+        <input type="text" class="form-select mb-1" placeholder="Insert Field ($ variables)" [formControl]="myControl" [matAutocomplete]="auto" />
+        <mat-autocomplete #auto="matAutocomplete" [displayWith]="displayFn">
+          <mat-option *ngFor="let option of filteredOptions | async" [value]="option">
+            <div class="d-flex justify-content-between">
+              <div (click)="insertVariable(option)" class="flex-grow-1">
+                <span>{{ option.name }}</span>
+                <span class="small text-muted">{{ '${' + option.key + '}' }}</span>
+              </div>
+              <span title="Copy to clipboard" (click)="copyToClipBoard(option)" class="far fa-copy cursor-pointer float-end mt-2"></span>
+            </div>
+          </mat-option>
+        </mat-autocomplete>
+        <!--Print all the available options-->
+        <!--<div>-->
+        <!--  <p *ngFor="let option of availableColumns">-->
+        <!--    {{option.name}}: {{'${' + option.key + '}'}}-->
+        <!--  </p>-->
+        <!--</div>-->
+        <div *ngIf="loadingEditor" class="mt-2">
+          <i class="fa fa-spinner fa-spin"></i>
+          Loading Editor...
+        </div>
+        <iframe id="editor-container" #commentFrame [src]="editorAppPath" height="100%" width="100%" frameBorder="0"></iframe>
+      </div>
+    </div>
+  </form>
+</div>
+<div mat-dialog-actions class="clearfix float-end">
+  <button class="btn btn-link text-decoration-none" (click)="cancelEditing()">Cancel</button>
+  <button class="btn btn-primary ms-2" [disabled]="template.scope === templateScopes.PROJECT && !isAdmin" (click)="clickOk()">OK</button>
+</div>

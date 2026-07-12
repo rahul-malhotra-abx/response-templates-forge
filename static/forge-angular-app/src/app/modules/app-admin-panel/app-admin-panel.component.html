@@ -1,0 +1,12 @@
+<div class="px-5 pt-4">
+  <h3>Response Templates for Jira</h3>
+  <mat-tab-group class="mt-4" [selectedIndex]="selectedTabIndex" (selectedIndexChange)="onTabChange($event)">
+    <mat-tab label="Global Templates">
+      <app-app-templates *ngIf="activeTab === 'global-templates'"></app-app-templates>
+    </mat-tab>
+
+    <mat-tab label="Project Enablement">
+      <app-project-enablement *ngIf="activeTab === 'project-enablement'"></app-project-enablement>
+    </mat-tab>
+  </mat-tab-group>
+</div>

@@ -1,0 +1,352 @@
+/* Importing Bootstrap SCSS file. */
+@import 'bootstrap/scss/bootstrap';
+/* Core Data Grid CSS */
+@import 'ag-grid-community/dist/styles/ag-grid.css';
+/* Quartz Theme Specific CSS */
+@import 'ag-grid-community/dist/styles/ag-theme-alpine.css';
+
+/* Forge CSP fix: ag-Grid ships its "agGridAlpine" icon font as a data: URI.
+   Forge's strict custom-UI CSP allows font-src 'self' only (no data:), so the
+   grid icons get blocked in the tunnel AND in production. Re-declare the same
+   @font-face here — after the ag-Grid import so it wins the cascade — pointing
+   at a self-hosted copy (extracted from ag-Grid's own base64) served from 'self'. */
+@font-face {
+  font-family: "agGridAlpine";
+  src: url("./fonts/agGridAlpine.woff") format("woff");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@import './assets/fonts/fonts.scss';
+
+:focus {
+  outline: none !important;
+}
+
+html,
+body {
+  font-size: 13px;
+  font-family: 'Roboto', sans-serif;
+  height: 100vh !important;
+  max-height: 100vh;
+}
+
+table {
+  font-family: 'Roboto', sans-serif;
+
+  th {
+    font-weight: 500;
+    color: #5e6c84;
+    background: #ffffff;
+    font-size: 11px;
+    padding: 0.5rem;
+  }
+
+  tr {
+    color: #172b4d;
+    font-size: 14px;
+    font-weight: 400;
+  }
+
+  input.content-editable {
+    width: 60px;
+    margin-left: 5px;
+    margin-right: -10px;
+    text-align: center;
+  }
+}
+
+.table > :not(:first-child) {
+  border-top: 0 !important;
+}
+
+p {
+  margin-bottom: 5px;
+}
+
+.tableFixHead {
+  overflow-y: auto;
+  height: calc(100vh - 290px);
+}
+
+.tableFixHead thead {
+  th {
+    position: sticky;
+    top: 0;
+    box-shadow: 0 1px 0 0 #dddd;
+  }
+}
+
+/* Just common table stuff. Really. */
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+input.content-editable {
+  border: 0;
+  outline: none;
+
+  &:hover,
+  &:focus {
+    box-shadow: 0 0 1px 0 #333333;
+  }
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: Roboto, 'Helvetica Neue', sans-serif;
+}
+
+.btn-check:focus + .btn,
+.btn:focus {
+  box-shadow: none;
+}
+
+.btn-primary {
+  background-color: #0052cc !important;
+  border-color: #0148b2 !important;
+}
+
+.btn-outline-primary:hover {
+  color: #fff;
+  background-color: #0052cc;
+  border-color: #0148b2;
+}
+
+.multiselect-dropdown {
+  margin-bottom: 5px;
+
+  .dropdown-btn {
+    padding: 4px 25px 5px 12px !important;
+    border: 1px solid #ced4da !important;
+
+    .selected-item {
+      border: 1px solid #91bdff !important;
+      background: rgb(244, 245, 247) !important;
+      color: #0052cc !important;
+
+      &:hover {
+        box-shadow: none !important;
+        border: 1px solid #0052cc !important;
+      }
+
+      a {
+        color: #0052cc !important;
+      }
+    }
+
+    .dropdown-multiselect__caret {
+      padding: 0 8px !important;
+      right: -2px !important;
+    }
+  }
+}
+
+.multiselect-item-checkbox input[type='checkbox']:checked + div:before {
+  background: #0052cc !important;
+}
+
+.multiselect-item-checkbox input[type='checkbox'] + div:before {
+  color: #0052cc;
+  border: 2px solid #0052cc !important;
+}
+
+.dropdown-list {
+  min-width: 200px;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: Roboto, 'Helvetica Neue', sans-serif;
+}
+
+/* Loader */
+.page-loader-wrapper {
+  height: 30px;
+  display: inline-flex;
+
+  .page-loader {
+    content: 'A';
+    border: 2px solid #fafafa;
+    border-radius: 50%;
+    border-top: 2px solid #0052cc;
+    width: 30px;
+    height: 30px;
+    -webkit-animation: spin 2s linear infinite;
+    animation: spin 1s linear infinite;
+    margin: 0px auto 20px auto;
+  }
+
+  .page-loader-icon {
+    position: relative;
+    left: -23px;
+    top: 8px;
+    font-size: 15px;
+    color: #57c157;
+  }
+
+  .page-loader-text {
+    padding-top: 6px;
+    margin-left: -5px;
+  }
+}
+
+/* Safari */
+@-webkit-keyframes spin {
+  0% {
+    -webkit-transform: rotate(0deg);
+  }
+  100% {
+    -webkit-transform: rotate(360deg);
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.h-r {
+  border-bottom: 1px solid #ececec;
+  margin: 5px 0;
+}
+
+.ribbon {
+  padding: 5px 0 15px 0;
+  display: flex;
+
+  .search {
+    input {
+      width: 200px;
+    }
+  }
+
+  .action-buttons {
+    margin-left: auto;
+    order: 2;
+  }
+}
+
+.bg-success-light {
+  background: #e3fcef50 !important;
+}
+
+.bg-purple {
+  background-color: #eae6ff !important;
+  color: #463898;
+  font-weight: 600;
+}
+
+.table-hover > tbody > tr:hover {
+  --bs-table-accent-bg: #eeeeee50 !important;
+}
+
+div.ruler {
+  border-bottom: 1px solid #cccccc;
+  margin: 1rem 0;
+}
+
+.score-tooltip {
+  width: 375px;
+
+  .tooltip-inner {
+    background-color: #0052cc;
+    font-size: 125%;
+    max-width: 90%;
+    margin: 0 auto;
+    padding: 10px 5px;
+    font-weight: 400;
+  }
+
+  .arrow::before {
+    border-top-color: #0052cc;
+  }
+}
+
+// Alert|Confirm|Prompt Modal CSS
+.BasicModalsLineConfirm,
+.BasicModalsLineAlert {
+  justify-content: flex-end !important;
+}
+
+.BasicModalsBox {
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  font-family: Roboto, 'Helvetica Neue', sans-serif !important;
+}
+
+.BasicModalsTitle {
+  text-align: left !important;
+}
+
+.BasicModalsButtonOk {
+  background: #0052cc !important;
+  margin-right: 10px !important;
+}
+
+.BasicModalsButtonNo {
+  background: white !important;
+  color: #0052cc !important;
+}
+
+.invisible {
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.mat-slide-toggle.mat-primary.mat-checked .mat-slide-toggle-bar {
+  background-color: #0052cc63;
+}
+
+.mat-slide-toggle.mat-primary.mat-checked .mat-slide-toggle-thumb {
+  background-color: #0052cc;
+}
+
+.mat-option {
+  line-height: 30px !important;
+  height: 30px !important;
+  padding: 0 10px !important;
+  font-size: 14px !important;
+}
+
+.mat-autocomplete-panel {
+  max-height: 200px !important;
+  border-left: 1px solid #ccc;
+}
+
+.overlay-container {
+  display: none;
+  height: 0 !important;
+}
+
+.text-black-35 {
+  color: rgba(0, 0, 0, 0.35);
+}
+
+.fw-500 {
+  font-weight: 500;
+}
+
+.mat-dialog-container {
+  max-height: calc(100vh - 20px) !important;
+}

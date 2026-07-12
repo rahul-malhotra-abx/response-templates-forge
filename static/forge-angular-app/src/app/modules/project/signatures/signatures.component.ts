@@ -1,0 +1,140 @@
+import { Component, OnInit } from '@angular/core';
+import { SignatureTemplate } from '../../../models/template.model';
+import { StorageService } from '../../../services/storage.service';
+import { JiraUserModel } from '../../../models/jira.user.model';
+import { UtilsService } from '../../../services/utils.service';
+import { StorageContext } from '../../../models/storage.context.enum';
+import { DataStorageKeys } from '../../../models/data.storage.keys.model';
+import { ActivatedRoute } from '@angular/router';
+import { JiraService } from '../../../services/jira.service';
+import { v4 as uuidv4 } from 'uuid';
+import { ToastrService } from 'ngx-toastr';
+import { MatDialog } from '@angular/material/dialog';
+import { EditSignatureComponent } from './edit-signature/edit-signature.component';
+import { alert, confirm } from 'basic-modals';
+import { AnalyticalService, ANALYTICAL_EVENTS } from 'src/app/services/analytical.service';
+import { DEFAULT_LIMITS } from '../../../models/default.limits';
+
+@Component({
+  selector: 'app-signatures',
+  templateUrl: './signatures.component.html',
+  styleUrls: ['./signatures.component.scss'],
+})
+export class SignaturesComponent implements OnInit {
+  pageLoaded = false;
+  currentUser: JiraUserModel;
+  projectIdOrKey: string;
+  parentDomain = UtilsService.getParentDomain();
+  isAdmin = false;
+  defaultSignatureLimit: number = DEFAULT_LIMITS.USER_SIGNATURES;
+
+  allSignatures: SignatureTemplate[] = [];
+  signatures: SignatureTemplate[] = [];
+  signatureStorageService: StorageService;
+
+  constructor(private toastr: ToastrService, private route: ActivatedRoute, public dialog: MatDialog) {}
+
+  ngOnInit(): void {
+    this.route.parent.params.subscribe(async (params) => {
+      this.projectIdOrKey = params.id;
+      this.currentUser = await JiraService.getCurrentJiraUser();
+
+      this.signatureStorageService = new StorageService(StorageContext.USER, this.currentUser.accountId, DataStorageKeys.USER_SIGNATURES);
+      this.signatures = (await this.signatureStorageService.get()) || ([] as SignatureTemplate[]);
+      // console.log('signatures', this.signatures);
+
+      this.allSignatures = [...this.signatures];
+
+      const fetchUserRoles = ['SYSTEM_ADMIN', 'ADMINISTER', 'ADMINISTER_PROJECTS', 'EDIT_ISSUES'];
+      const responseTemplateAdminRole = ['SYSTEM_ADMIN', 'ADMINISTER', 'ADMINISTER_PROJECTS'];
+      const userPermissions = await JiraService.getUserPermissions(fetchUserRoles);
+      if (UtilsService.hasOneOfPermission(responseTemplateAdminRole, userPermissions)) {
+        this.isAdmin = true;
+      }
+
+      AnalyticalService.sendEvent(ANALYTICAL_EVENTS.VIEW_ITEM_LIST, 'user.signatures', {
+        item_count: this.signatures.length,
+      });
+
+      this.pageLoaded = true;
+    });
+  }
+
+  openEditSignatureModal(signature: SignatureTemplate): void {
+    const newSignature = !signature;
+    signature = signature || {
+      id: uuidv4(),
+      name: '',
+      content: '',
+      active: false,
+      updatedAt: new Date(),
+      updatedBy: this.currentUser,
+    };
+    const dialogRef = this.dialog.open(EditSignatureComponent, {
+      width: '600px',
+      data: {
+        signature: JSON.parse(JSON.stringify(signature)),
+        signatures: this.allSignatures,
+        projectIdOrKey: this.projectIdOrKey,
+        isAdmin: this.isAdmin,
+        newSignature,
+      },
+    });
+
+    dialogRef.afterClosed().subscribe(async (result) => {
+      if (result) {
+        let matchedIndex: number;
+        matchedIndex = this.signatures.findIndex((t) => t.id === result.id);
+        result.updatedAt = new Date();
+        result.updatedBy = UtilsService.stripUserModel(this.currentUser);
+        if (matchedIndex > -1) {
+          this.signatures[matchedIndex] = result;
+        } else {
+          this.signatures.push(result);
+        }
+        await this.signatureStorageService.save(this.signatures);
+        AnalyticalService.sendEvent(matchedIndex ? ANALYTICAL_EVENTS.EDIT_ITEM : ANALYTICAL_EVENTS.ADD_ITEM, 'user.signatures', {
+          item_name: result.name,
+          active_signature: result.active,
+        });
+        AnalyticalService.sendEvent(ANALYTICAL_EVENTS.VIEW_ITEM_LIST, 'user.signatures', {
+          item_count: this.signatures.length,
+        });
+
+        this.allSignatures = [...this.signatures];
+      }
+    });
+  }
+
+  async toggleActiveSignature(signature: SignatureTemplate) {
+    signature.active = !signature.active;
+    if (signature.active) {
+      this.signatures.forEach((sign) => {
+        if (sign.id !== signature.id) {
+          sign.active = false;
+        }
+      });
+    }
+    await this.signatureStorageService.save(this.signatures);
+    AnalyticalService.sendEvent(ANALYTICAL_EVENTS.EDIT_ITEM, 'user.signatures', {
+      item_name: signature.name,
+      active: signature.active,
+    });
+  }
+
+  async deleteSignature(signature: SignatureTemplate) {
+    if (await confirm('Are you sure?')) {
+      const index = this.signatures.findIndex((t) => t.id === signature.id);
+      const signatureToBeDelete: SignatureTemplate = this.signatures.splice(index, 1)[0] as SignatureTemplate;
+      await this.signatureStorageService.save(this.signatures);
+      this.toastr.success(`${signatureToBeDelete.name} deleted successfully`, `Success`);
+      AnalyticalService.sendEvent(ANALYTICAL_EVENTS.DELETE_ITEM, 'user.signatures', {
+        item_name: signature.name,
+      });
+      AnalyticalService.sendEvent(ANALYTICAL_EVENTS.VIEW_ITEM_LIST, 'user.signatures', {
+        item_count: this.signatures.length,
+      });
+      this.allSignatures = [...this.signatures];
+    }
+  }
+}

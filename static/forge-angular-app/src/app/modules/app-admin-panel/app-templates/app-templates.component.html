@@ -1,0 +1,61 @@
+<div class="p-5 pt-4">
+  <h3>Global Templates</h3>
+
+  <div class="d-flex my-3 justify-content-between">
+    <p class="mb-0 text-bigger">Manage Templates</p>
+    <button class="btn btn-primary" (click)="openEditTemplateModal()">Add a Global Template</button>
+  </div>
+  <div class="py-3">
+    <div *ngIf="!pageLoaded">
+      <i class="fa fa-spinner fa-spin"></i>
+      Loading Templates
+    </div>
+    <div *ngIf="pageLoaded">
+      <table class="table w-100 table-responsive-lg">
+        <colgroup>
+          <col style="width: auto" />
+          <col style="width: 200px" />
+          <col style="width: 200px" />
+          <col style="width: 110px" />
+          <col style="width: 110px" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th id="th-name">Name</th>
+            <th id="th-updated-by">Updated By</th>
+            <th id="th-updated-at">Updated At</th>
+            <th id="th-scope">Scope</th>
+            <th id="th-actions">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let template of templates; let i = index">
+            <td>{{ template.name }}</td>
+            <td>
+              <img [src]="template.updatedBy?.avatarUrls['24x24']" width="20" />
+              &nbsp; {{ template.updatedBy.displayName }}
+            </td>
+            <td>{{ template.updatedAt | date : 'medium' }}</td>
+            <td>
+              <i class="fa fa-globe text-muted"></i>
+              &nbsp;{{ template.scope }}
+            </td>
+            <td>
+              <i
+                class="cursor-pointer bi me-3"
+                ngbTooltip="Toggle favorite"
+                (click)="toggleTemplateStar(template)"
+                [ngClass]="template.starred ? 'bi-star-fill text-muted' : 'bi-star'"></i>
+              <i class="fa fa-pencil-alt me-3 cursor-pointer text-muted" ngbTooltip="Edit template" (click)="openEditTemplateModal(template)"></i>
+              <i class="far fa-copy cursor-pointer me-3" ngbTooltip="Clone template" (click)="cloneTemplate(template)"></i>
+              <i class="fa fa-trash-alt text-danger cursor-pointer" ngbTooltip="Delete template" (click)="deleteTemplate(i)"></i>
+            </td>
+          </tr>
+          <tr *ngIf="templates?.length === 0">
+            <td colspan="6" class="text-center border-bottom-0">No templates</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

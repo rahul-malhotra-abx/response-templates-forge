@@ -459,33 +459,7 @@ resolver.define("saveUserProperties", async ({ payload }) => {
   return { ok: true };
 });
 
-resolver.define("getAppProperties", async ({ payload }) => {
-  const properties = Array.isArray(payload?.properties)
-    ? payload.properties
-    : [];
-  const result = {};
-
-  for (const propertyKey of properties) {
-    const response = await api
-      .asApp()
-      .requestJira(route`/rest/forge/1/app/properties/${propertyKey}`);
-
-    if (response.status === 404) {
-      continue;
-    }
-
-    const data = await parseJsonResponse(response);
-    result[data.key] = data.value;
-  }
-
-  return result;
-});
-
-resolver.define("saveAppProperties", async ({ payload }) => {
-  const properties = Array.isArray(payload?.properties)
-    ? payload.properties
-    : [];
-
+async function saveForgeAppProperties(properties) {
   for (const property of properties) {
     const response = await api
       .asApp()
@@ -496,6 +470,63 @@ resolver.define("saveAppProperties", async ({ payload }) => {
       });
     await parseJsonResponse(response);
   }
+}
+
+resolver.define("getAppProperties", async ({ payload }) => {
+  const properties = Array.isArray(payload?.properties)
+    ? payload.properties
+    : [];
+  const addonKey = payload?.addonKey || "com.appbox.ai.response.templates";
+  const forgeProperties = {};
+  const connectProperties = {};
+  const result = {};
+
+  for (const propertyKey of properties) {
+    const forgeResponse = await api
+      .asApp()
+      .requestJira(route`/rest/forge/1/app/properties/${propertyKey}`);
+    let connectStatus = "skipped";
+
+    if (forgeResponse.status !== 404) {
+      const data = await parseJsonResponse(forgeResponse);
+      forgeProperties[data.key] = data.value;
+    } else {
+      const connectResponse = await api
+        .asApp()
+        .requestJira(
+          route`/rest/atlassian-connect/1/addons/${addonKey}/properties/${propertyKey}`,
+        );
+      connectStatus = connectResponse.status;
+
+      if (connectResponse.status !== 404) {
+        const data = await parseJsonResponse(connectResponse);
+        connectProperties[data.key] = data.value;
+      }
+    }
+
+    // Diagnostic — remove once migration confirmed. Shows in `forge tunnel` console.
+    console.log(
+      `[getAppProperties] ${propertyKey} -> forge=${forgeResponse.status} connect=${connectStatus}`,
+    );
+  }
+
+  for (const propertyKey of properties) {
+    if (forgeProperties[propertyKey]) {
+      result[propertyKey] = forgeProperties[propertyKey];
+    } else if (connectProperties[propertyKey]) {
+      result[propertyKey] = connectProperties[propertyKey];
+    }
+  }
+
+  return result;
+});
+
+resolver.define("saveAppProperties", async ({ payload }) => {
+  const properties = Array.isArray(payload?.properties)
+    ? payload.properties
+    : [];
+
+  await saveForgeAppProperties(properties);
 
   return { ok: true };
 });

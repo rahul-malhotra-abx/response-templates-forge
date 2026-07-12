@@ -6,8 +6,8 @@
   "scripts": {
     "use:paid": "cp manifest.paid.yml manifest.yml && echo 'Active manifest: PAID'",
     "use:free": "cp manifest.free.yml manifest.yml && echo 'Active manifest: FREE'",
-    "deploy:paid": "npm run use:paid && forge deploy",
-    "deploy:free": "npm run use:free && forge deploy",
+    "deploy:paid": "npm run use:paid && npm run ui:build:paid && forge deploy",
+    "deploy:free": "npm run use:free && npm run ui:build:free && forge deploy",
     "forge:install:paid": "npm run use:paid && forge install",
     "forge:install:free": "npm run use:free && forge install",
     "forge:upgrade:paid": "npm run use:paid && forge install --upgrade",

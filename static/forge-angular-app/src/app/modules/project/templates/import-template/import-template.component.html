@@ -1,0 +1,48 @@
+<h1 mat-dialog-title>
+  <i class="fa fa-download text-black-50 me-2"></i>
+  <span class="text-muted">Import Templates</span>
+</h1>
+<div mat-dialog-content class="py-1">
+  <form *ngIf="pageLoaded">
+    <div class="row">
+      <div class="col-12">
+        <label for="template-name" class="form-label">
+          Project
+          <span ngbTooltip="Required Field" class="text-danger">*</span>
+        </label>
+        <select name="projects" class="form-select" [(ngModel)]="selectedProject" (ngModelChange)="loadTemplates()">
+          <option *ngFor="let project of projects" [ngValue]="project">
+            {{ project.name }}
+          </option>
+        </select>
+      </div>
+      <div class="col-12 mt-3 template-list" *ngIf="selectedProject">
+        <div class="form-check" *ngFor="let template of projectTemplates">
+          <input
+            class="form-check-input"
+            type="checkbox"
+            [(ngModel)]="template['checked']"
+            name="templates"
+            value="true"
+            [id]="'template-' + template.id" />
+          <label class="form-check-label" [for]="'template-' + template.id">
+            {{ template.name }}
+          </label>
+        </div>
+        <p class="text-muted" *ngIf="loadingTemplates">Loading templates...</p>
+        <p class="text-muted" *ngIf="projectTemplates.length === 0 && !loadingTemplates">
+          No templates found in
+          <span class="fw-500">{{ selectedProject.name }}</span>
+          project.
+        </p>
+      </div>
+      <div class="col-12 mt-3" *ngIf="!selectedProject">
+        <p class="text-muted">Select a project to load templates.</p>
+      </div>
+    </div>
+  </form>
+</div>
+<div mat-dialog-actions class="clearfix float-end">
+  <button class="btn btn-link text-decoration-none" (click)="cancelEditing()">Cancel</button>
+  <button class="btn btn-primary ms-2" (click)="clickOk()">OK</button>
+</div>

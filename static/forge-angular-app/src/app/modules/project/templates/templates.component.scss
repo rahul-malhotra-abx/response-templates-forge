@@ -1,0 +1,33 @@
+.tab-content {
+  height: calc(100vh - 80px);
+}
+
+.nav-tabs {
+  padding: 0 10px;
+}
+
+.template-left-menu {
+  width: 125px;
+
+  a {
+    cursor: pointer;
+  }
+}
+
+.template-grid {
+  width: calc(100% - 125px);
+}
+
+.template-content-grid-block {
+  max-height: 150px;
+  max-width: 400px;
+  overflow: auto;
+}
+
+pre {
+  font-size: .75em !important;
+  white-space: pre-wrap; /* Since CSS 2.1 */
+  white-space: -moz-pre-wrap; /* Mozilla, since 1999 */
+  white-space: -o-pre-wrap; /* Opera 7 */
+  word-wrap: break-word; /* Internet Explorer 5.5+ */
+}

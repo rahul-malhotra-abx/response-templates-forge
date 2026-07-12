@@ -1,0 +1,160 @@
+<div id="response-template-wrapper">
+  <span *ngIf="!pageLoaded">Loading...</span>
+  <div *ngIf="pageLoaded">
+    <nav class="navbar navbar-expand-lg navbar-light bg-white pt-0 pb-1">
+      <div class="navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav mr-auto">
+          <li class="nav-item dropdown border border-secondary rounded-2">
+            <a
+              class="nav-link dropdown-toggle p-1 ps-2"
+              href="#"
+              id="navbarDropdown"
+              role="button"
+              data-bs-toggle="dropdown"
+              aria-haspopup="true"
+              aria-expanded="false"
+              (click)="startEditing()">
+              Insert A Template
+            </a>
+            <div class="dropdown-menu position-absolute shadow container-fluid" aria-labelledby="navbarDropdown">
+              <div class="row">
+                <div class="col-6">
+                  <div class="text-center">
+                    <button
+                      class="mx-1 btn btn-sm btn-outline-primary"
+                      *ngFor="let filter of filters"
+                      [ngClass]="{ active: filter === this.templateSearch.filter }"
+                      (click)="filterList($event, filter)">
+                      {{ filter }}
+                    </button>
+                  </div>
+                  <div class="p-2">
+                    <input
+                      type="text"
+                      class="form-control"
+                      placeholder="Search ..."
+                      [(ngModel)]="templateSearch.string"
+                      (ngModelChange)="searchFilter()" />
+                  </div>
+                  <div class="templateDropdownList">
+                    <a
+                      class="dropdown-item overflow-hidden text-truncate"
+                      *ngFor="let option of filteredOptions | async"
+                      (click)="useTemplate(option, 'dropdown')"
+                      href="#"
+                      data-toggle="tooltip"
+                      data-placement="top"
+                      title="{{ option.name }}">
+                      <span class="icon-container">
+                        <i class="far fa-user text-muted" *ngIf="option.scope === templateScopes.PERSONAL"></i>
+                        <i class="fa fa-globe text-muted" *ngIf="option.scope === templateScopes.GLOBAL"></i>
+                        <i class="far fa-folder-open text-muted" *ngIf="option.scope === templateScopes.PROJECT"></i>
+                      </span>
+                      {{ option.name }}
+                    </a>
+                  </div>
+                </div>
+                <div class="col-6 ps-1">
+                  <li class="text-dark fw-500">Recently Used</li>
+                  <div class="templateDropdownList shorterTemplateListHeight">
+                    <a
+                      class="dropdown-item overflow-hidden text-truncate"
+                      *ngFor="let option of recentTemplates"
+                      (click)="useTemplate(option, 'dropdown')"
+                      href="#"
+                      data-toggle="tooltip"
+                      data-placement="top"
+                      title="{{ option.name }}">
+                      <span class="icon-container">
+                        <i class="far fa-user text-muted" *ngIf="option.scope === templateScopes.PERSONAL"></i>
+                        <i class="fa fa-globe text-muted" *ngIf="option.scope === templateScopes.GLOBAL"></i>
+                        <i class="far fa-folder-open text-muted" *ngIf="option.scope === templateScopes.PROJECT"></i>
+                      </span>
+                      {{ option.name }}
+                    </a>
+                    <span *ngIf="recentTemplates?.length === 0" class="text-muted fst-italic">Recently used templates will appear here.</span>
+                  </div>
+                  <div class="dropdown-divider"></div>
+                  <li class="text-dark fw-500">Most Used</li>
+                  <div class="templateDropdownList shorterTemplateListHeight">
+                    <a
+                      class="dropdown-item overflow-hidden text-truncate"
+                      *ngFor="let option of mostUsedTemplates"
+                      (click)="useTemplate(option, 'dropdown')"
+                      href="#"
+                      data-toggle="tooltip"
+                      data-placement="top"
+                      title="{{ option.name }}">
+                      <span class="icon-container">
+                        <i class="far fa-user text-muted" *ngIf="option.scope === templateScopes.PERSONAL"></i>
+                        <i class="fa fa-globe text-muted" *ngIf="option.scope === templateScopes.GLOBAL"></i>
+                        <i class="far fa-folder-open text-muted" *ngIf="option.scope === templateScopes.PROJECT"></i>
+                      </span>
+                      {{ option.name }}
+                    </a>
+                    <span *ngIf="recentTemplates?.length === 0" class="text-muted fst-italic">Most used templates will appear here.</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </li>
+          <li class="ms-3">
+            <div class="form-check form-switch pt-1" title="Merge template with current">
+              <input
+                class="form-check-input"
+                type="checkbox"
+                role="switch"
+                [disabled]="!usedTemplate"
+                [(ngModel)]="mergeTemplates"
+                [checked]="mergeTemplates"
+                id="flexSwitchCheckDefault" />
+              <label class="form-check-label" for="flexSwitchCheckDefault">Merge Templates</label>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </nav>
+    <div class="d-flex justify-content-start flex-wrap mb-1">
+      <ng-container *ngFor="let template of templates">
+        <div class="favorite-item" *ngIf="template.starred" (click)="useTemplate(template, 'favorite')">
+          <i class="far fa-user text-muted" *ngIf="template.scope === templateScopes.PERSONAL"></i>
+          <i class="fa fa-globe text-muted" *ngIf="template.scope === templateScopes.GLOBAL"></i>
+          <i class="far fa-folder-open text-muted" *ngIf="template.scope === templateScopes.PROJECT"></i>
+          &nbsp;{{ template.name }}
+        </div>
+      </ng-container>
+    </div>
+    <div *ngIf="editing" class="mb-3">
+      <mat-tab-group #tabGroup [selectedIndex]="currentTabIndex" (selectedTabChange)="tabChanged($event)">
+        <mat-tab *ngFor="let tab of tabMapping" [label]="tab.label">
+          <ng-template mat-tab-label>
+            <div class="tab-label">
+              <span>{{ tab.label }}</span>
+            </div>
+          </ng-template>
+        </mat-tab>
+      </mat-tab-group>
+    </div>
+    <div *ngIf="!editing" class="startEditingTextArea">
+      <span *ngFor="let tab of tabMapping; let i = index" (click)="startEditing(tab.key)" class="cursor-pointer">
+        <span class="text-primary px-2 fw-500">{{ tab.label }}</span>
+        {{ i < tabMapping.length - 1 ? '/' : '' }}
+      </span>
+    </div>
+    <div [hidden]="!editing">
+      <iframe id="editor-container" #commentFrame [src]="editorAppPath" height="100%" width="100%" frameBorder="0"></iframe>
+      <div class="d-flex">
+        <button class="btn btn-primary ms-2" [disabled]="isSaveDisabled()" (click)="saveResponse()">
+          Save
+          <span class="fst-italic">({{ currentTabLabel }})</span>
+        </button>
+        <button class="btn btn-link text-decoration-none" (click)="cancelEditing()">Cancel</button>
+        <button *ngIf="isAdmin" class="btn btn-link text-decoration-none ms-auto" [disabled]="isSaveDisabled()" (click)="saveAsNewTemplate()">
+          Save As Template
+        </button>
+      </div>
+    </div>
+    <div class="pb-5" *ngIf="editing"></div>
+    <div class="py-5 my-6" *ngIf="isSavingTemplate"></div>
+  </div>
+</div>

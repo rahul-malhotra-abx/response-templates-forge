@@ -1,0 +1,113 @@
+<div class="d-flex my-3 justify-content-between">
+  <p class="mb-0 text-bigger">Manage Templates</p>
+  <div *ngIf="pageLoaded">
+    <button class="btn btn-primary me-2" *ngIf="isAdmin" (click)="openEditTemplateModal(undefined, templateScopes.PROJECT)">
+      <i class="fa fa-folder-plus me-2"></i>
+      Add a Project Template
+    </button>
+    <button class="btn btn-outline-primary me-2" (click)="openEditTemplateModal(undefined, templateScopes.PERSONAL)">
+      <i class="fa fa-user-plus me-2"></i>
+      Add a Personal Template
+    </button>
+    <button class="btn btn-outline-dark me-2" *ngIf="isAdmin" (click)="openImportTemplateModal()">
+      <i class="fa fa-download me-2"></i>
+      Import Templates
+    </button>
+  </div>
+</div>
+<div class="pt-3">
+  <div *ngIf="!pageLoaded">
+    <i class="fa fa-spinner fa-spin"></i>
+    Loading Templates
+  </div>
+  <div *ngIf="pageLoaded">
+    <div class="row">
+      <div class="template-left-menu">
+        <p class="py-1">Filter Templates</p>
+        <div class="list-group">
+          <a
+            *ngFor="let filter of filters"
+            (click)="activeFilter = filter"
+            class="list-group-item list-group-item-action"
+            [ngClass]="{ active: filter === activeFilter }">
+            {{ filter }}
+          </a>
+        </div>
+      </div>
+      <div class="template-grid">
+        <table class="table w-100 table-responsive-lg">
+          <colgroup>
+            <col style="width: auto" />
+            <col style="width: 200px" />
+            <col style="width: 200px" />
+            <col style="width: 100px" />
+            <col style="width: 110px" />
+          </colgroup>
+          <thead>
+            <tr>
+              <th id="th-name">
+                Name
+                <i class="ms-2 text-black-35 fa fa-long-arrow-alt-up"></i>
+              </th>
+              <th id="th-updated-by">Updated By</th>
+              <th id="th-updated-at">Updated At</th>
+              <th id="th-scope">Scope</th>
+              <th id="th-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <ng-container *ngFor="let template of allTemplates; let i = index">
+              <tr *ngIf="activeFilter === 'All' || activeFilter === template.scope">
+                <td>{{ template.name }}</td>
+                <td>
+                  <img [src]="template.updatedBy?.avatarUrls['24x24']" width="20" />
+                  &nbsp; {{ template.updatedBy.displayName }}
+                </td>
+                <td [ngbTooltip]="template.updatedAt | date : 'medium'">{{ template.updatedAt | date : 'medium' }}</td>
+                <td>
+                  <i class="far fa-user text-muted" *ngIf="template.scope === templateScopes.PERSONAL"></i>
+                  <i class="fa fa-globe text-muted" *ngIf="template.scope === templateScopes.GLOBAL"></i>
+                  <i class="far fa-folder-open text-muted" *ngIf="template.scope === templateScopes.PROJECT"></i>
+                  &nbsp; {{ template.scope }}
+                </td>
+                <td>
+                  <div *ngIf="template.scope !== templateScopes.GLOBAL">
+                    <i
+                      class="cursor-pointer bi me-3"
+                      ngbTooltip="Toggle favorite"
+                      *ngIf="(template.scope === templateScopes.PROJECT && isAdmin) || template.scope === templateScopes.PERSONAL"
+                      (click)="toggleTemplateStar(template)"
+                      [ngClass]="template.starred ? 'bi-star-fill text-muted' : 'bi-star'"></i>
+                    <i
+                      class="fa fa-pencil-alt me-3 cursor-pointer text-muted"
+                      ngbTooltip="Edit template"
+                      *ngIf="(template.scope === templateScopes.PROJECT && isAdmin) || template.scope === templateScopes.PERSONAL"
+                      (click)="openEditTemplateModal(template, template.scope)"></i>
+                    <i
+                      *ngIf="(template.scope === templateScopes.PROJECT && isAdmin) || template.scope === templateScopes.PERSONAL"
+                      class="far fa-copy cursor-pointer me-3"
+                      ngbTooltip="Clone template"
+                      (click)="cloneTemplate(template)"></i>
+                    <i
+                      *ngIf="(template.scope === templateScopes.PROJECT && isAdmin) || template.scope === templateScopes.PERSONAL"
+                      class="fa fa-trash-alt text-danger cursor-pointer"
+                      ngbTooltip="Delete template"
+                      (click)="deleteTemplate(template)"></i>
+                    <i
+                      *ngIf="template.scope === templateScopes.PROJECT && !isAdmin"
+                      class="fa fa-eye me-3 cursor-pointer text-muted"
+                      ngbTooltip="View template"
+                      (click)="openEditTemplateModal(template, template.scope)"></i>
+                  </div>
+                </td>
+              </tr>
+            </ng-container>
+            <tr *ngIf="allTemplates?.length === 0">
+              <td colspan="7" class="text-center border-bottom-0">No templates</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

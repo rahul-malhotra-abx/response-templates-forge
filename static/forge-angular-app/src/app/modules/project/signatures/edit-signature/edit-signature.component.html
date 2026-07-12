@@ -1,0 +1,42 @@
+<h1 mat-dialog-title>
+  <i class="fa fa-pencil-alt text-black-50"></i>
+  &nbsp;
+  <span class="text-muted">{{ dataFromPatent.newSignature ? 'New' : 'Edit' }} signature:</span>
+  <span>{{ signature.name }}</span>
+</h1>
+<div mat-dialog-content class="py-1">
+  <div class="container">
+    <div class="row">
+      <div class="col-12">
+        <label for="template-name" class="form-label">
+          Name
+          <span ngbTooltip="Required Field" class="text-danger">*</span>
+        </label>
+        <input
+          type="text"
+          class="form-control"
+          placeholder="Name your signature."
+          id="template-name"
+          autocomplete="off"
+          name="templateName"
+          [(ngModel)]="signature.name"
+          [maxLength]="DefaultLimits.TEMPLATE_NAME" />
+      </div>
+      <div class="col-12 mt-4">
+        <label class="form-label">
+          Signature
+          <span ngbTooltip="Required Field" class="text-danger">*</span>
+        </label>
+        <div *ngIf="loadingEditor" class="mt-2">
+          <i class="fa fa-spinner fa-spin"></i>
+          Loading Editor...
+        </div>
+        <iframe id="editor-container" #commentFrame [src]="editorAppPath" height="100%" width="100%" frameBorder="0"></iframe>
+      </div>
+    </div>
+  </div>
+</div>
+<div mat-dialog-actions class="clearfix float-end">
+  <button class="btn btn-link text-decoration-none" (click)="cancelEditing()">Cancel</button>
+  <button class="btn btn-primary ms-2" (click)="clickOk()">OK</button>
+</div>

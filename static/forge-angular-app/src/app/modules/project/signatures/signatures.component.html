@@ -1,0 +1,61 @@
+<div class="d-flex my-3 justify-content-between">
+  <p class="mb-0 text-bigger">Manage Signatures</p>
+  <div *ngIf="pageLoaded && allSignatures.length <= defaultSignatureLimit">
+    <button class="btn btn-primary me-2" (click)="openEditSignatureModal(undefined)">
+      <i class="fa fa-plus me-2"></i>
+      Add a Signature
+    </button>
+  </div>
+</div>
+<div class="pt-3">
+  <div *ngIf="!pageLoaded">
+    <i class="fa fa-spinner fa-spin"></i>
+    Loading Signatures
+  </div>
+  <div *ngIf="pageLoaded">
+    <div class="row">
+      <table class="table w-100 table-responsive-lg">
+        <colgroup>
+          <col style="width: auto" />
+          <col style="width: 250px" />
+          <col style="width: 150px" />
+        </colgroup>
+        <thead>
+          <tr>
+            <th id="th-name">
+              Name
+              <i class="ms-2 text-black-35 fa fa-long-arrow-alt-up"></i>
+            </th>
+            <th id="th-updated-at">Updated At</th>
+            <th id="th-actions">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <ng-container *ngFor="let signature of allSignatures; let i = index">
+            <tr>
+              <td>{{ signature.name }}</td>
+              <td [ngbTooltip]="signature.updatedAt | date : 'medium'">{{ signature.updatedAt | date : 'medium' }}</td>
+              <td>
+                <div>
+                  <i
+                    class="cursor-pointer me-3"
+                    ngbTooltip="Toggle Active"
+                    (click)="toggleActiveSignature(signature)"
+                    [ngClass]="signature.active ? 'fa fa-check-circle text-success' : 'fa fa-check-circle text-muted'"></i>
+                  <i
+                    class="fa fa-pencil-alt me-3 cursor-pointer text-muted"
+                    ngbTooltip="Edit signature"
+                    (click)="openEditSignatureModal(signature)"></i>
+                  <i class="fa fa-trash-alt text-danger cursor-pointer" ngbTooltip="Delete signature" (click)="deleteSignature(signature)"></i>
+                </div>
+              </td>
+            </tr>
+          </ng-container>
+          <tr *ngIf="allSignatures?.length === 0">
+            <td colspan="7" class="text-center border-bottom-0">No signatures</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

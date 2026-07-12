@@ -1,0 +1,59 @@
+.favorite-item {
+  padding: 5px 7px;
+  background: #f5f6f8;
+  cursor: pointer;
+  margin: 5px 7px 0 0;
+  border-radius: 3px;
+
+  &:hover {
+    background: #eeeeee;
+  }
+}
+
+.icon-container i {
+  width: 20px;
+  text-align: left;
+}
+
+.mat-tab-label {
+  height: 30px !important;
+}
+
+/* Styles for the active tab label */
+.mat-tab-label.mat-tab-label-active {
+  color: #0052cc;
+  opacity: 1 !important;
+}
+
+/* Styles for the ink bar */
+.mat-ink-bar {
+  background-color: #0052cc !important;
+}
+
+.startEditingTextArea{
+  border: 1px solid #dfe1e6;
+  padding: 12px;
+  border-radius: 3px;
+}
+
+.templateDropdownList {
+  max-height: 170px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.shorterTemplateListHeight {
+  max-height: 92px;
+}
+
+.dropdown-menu {
+  width: 96vw;
+}
+
+.dropdown {
+  width: 130px;
+}
+
+.navbar-nav{
+  display: -webkit-box;
+}

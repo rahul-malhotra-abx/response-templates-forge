@@ -1,0 +1,13 @@
+.template-content-grid-block {
+  max-height: 150px;
+  max-width: 400px;
+  overflow: auto;
+}
+
+pre {
+  font-size: .75em !important;
+  white-space: pre-wrap; /* Since CSS 2.1 */
+  white-space: -moz-pre-wrap; /* Mozilla, since 1999 */
+  white-space: -o-pre-wrap; /* Opera 7 */
+  word-wrap: break-word; /* Internet Explorer 5.5+ */
+}
