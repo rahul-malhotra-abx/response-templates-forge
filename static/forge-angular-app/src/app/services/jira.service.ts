@@ -2,7 +2,7 @@ import { JiraUserModel } from '../models/jira.user.model';
 import { UtilsService } from './utils.service';
 import { ENVIRONMENT } from '../environment';
 import { DataStorageKeys } from '../models/data.storage.keys.model';
-import { invoke, showFlag as forgeShowFlag } from '@forge/bridge';
+import { invoke, requestJira, showFlag as forgeShowFlag } from '@forge/bridge';
 
 export class JiraService {
   static cache: any = {
@@ -16,6 +16,53 @@ export class JiraService {
 
   static async getContext(): Promise<any> {
     return (await invoke('getForgeContext')) as any;
+  }
+
+  static getJiraAvatarPath(avatarUrl: string | undefined): string | undefined {
+    if (!avatarUrl) {
+      return undefined;
+    }
+
+    try {
+      const parsedUrl = new URL(avatarUrl);
+      const path = parsedUrl.pathname.replace(/^\/ex\/jira\/[^/]+/, '');
+      return path.startsWith('/rest/api/3/universal_avatar/view/') ? `${path}${parsedUrl.search}` : undefined;
+    } catch (e) {
+      return avatarUrl.startsWith('/rest/api/3/universal_avatar/view/') ? avatarUrl : undefined;
+    }
+  }
+
+  static async getAvatarObjectUrl(avatarUrl: string | undefined, projectId?: string): Promise<string | undefined> {
+    const avatarPaths = [this.getJiraAvatarPath(avatarUrl), projectId ? `/rest/api/3/universal_avatar/view/type/project/owner/${projectId}?size=small` : undefined].filter(
+      Boolean,
+    ) as string[];
+
+    for (const avatarPath of avatarPaths) {
+      const objectUrl = await this.getAvatarObjectUrlFromPath(avatarPath);
+      if (objectUrl) {
+        return objectUrl;
+      }
+    }
+
+    return undefined;
+  }
+
+  private static async getAvatarObjectUrlFromPath(avatarPath: string): Promise<string | undefined> {
+    if (!avatarPath.startsWith('/rest/api/3/universal_avatar/view/type/project/')) {
+      return undefined;
+    }
+
+    const response = await requestJira(avatarPath, {
+      headers: {
+        Accept: 'image/png',
+      },
+    });
+
+    if (!response.ok) {
+      return undefined;
+    }
+
+    return URL.createObjectURL(await response.blob());
   }
 
   static isInJira() {

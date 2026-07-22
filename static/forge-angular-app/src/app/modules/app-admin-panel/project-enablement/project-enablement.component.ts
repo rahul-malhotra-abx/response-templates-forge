@@ -1,4 +1,5 @@
-import { Component, OnInit, ViewEncapsulation } from '@angular/core';
+import { Component, OnDestroy, OnInit, ViewEncapsulation } from '@angular/core';
+import { DomSanitizer } from '@angular/platform-browser';
 import { JiraService } from '../../../services/jira.service';
 import { ENVIRONMENT } from '../../../environment';
 import { DataStorageKeys } from '../../../models/data.storage.keys.model';
@@ -11,7 +12,7 @@ import { UtilsService } from '../../../services/utils.service';
   styleUrls: ['./project-enablement.component.scss'],
   encapsulation: ViewEncapsulation.None,
 })
-export class ProjectEnablementComponent implements OnInit {
+export class ProjectEnablementComponent implements OnInit, OnDestroy {
   projects: any[] = [];
   pageLoaded = false;
   searchFilter = {
@@ -19,8 +20,9 @@ export class ProjectEnablementComponent implements OnInit {
   };
   maxResults = 50;
   UtilService = UtilsService;
+  private avatarObjectUrls: string[] = [];
 
-  constructor() {}
+  constructor(private sanitizer: DomSanitizer) {}
 
   async ngOnInit() {
     let response: any = { isLast: false, values: [] };
@@ -41,5 +43,39 @@ export class ProjectEnablementComponent implements OnInit {
   async updateStatus(index: number) {
     const currentProject = this.projects[index];
     await JiraService.saveProjectSettings(currentProject.adminSettings, currentProject.id);
+  }
+
+  ngOnDestroy() {
+    this.avatarObjectUrls.forEach((objectUrl) => URL.revokeObjectURL(objectUrl));
+  }
+
+  async loadProjectAvatarFallback(project: any) {
+    if (project.avatarFallbackLoading) {
+      return;
+    }
+    if (project.avatarObjectUrl) {
+      project.avatarUnavailable = true;
+      return;
+    }
+
+    project.avatarFallbackLoading = true;
+    try {
+      const objectUrl = await JiraService.getAvatarObjectUrl(project?.avatarUrls?.['24x24'], project?.id);
+      if (objectUrl) {
+        project.avatarObjectUrl = this.sanitizer.bypassSecurityTrustUrl(objectUrl);
+        this.avatarObjectUrls.push(objectUrl);
+      } else {
+        project.avatarUnavailable = true;
+      }
+    } catch (e) {
+      project.avatarUnavailable = true;
+    } finally {
+      project.avatarFallbackLoading = false;
+    }
+  }
+
+  getProjectAvatarInitials(project: any): string {
+    const value = project?.key || project?.name || '?';
+    return value.slice(0, 2).toUpperCase();
   }
 }

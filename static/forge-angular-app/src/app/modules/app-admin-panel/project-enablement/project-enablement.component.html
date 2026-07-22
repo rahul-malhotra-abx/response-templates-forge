@@ -30,7 +30,20 @@
       <tbody>
         <tr *ngFor="let project of projects | filterBy: searchFilter; let $index = index">
           <td>
-            <img [ngbTooltip]="project.key" [src]="project.avatarUrls['24x24']" width="20" />
+            <img
+              *ngIf="!project.avatarUnavailable; else projectAvatarFallback"
+              class="project-avatar"
+              [ngbTooltip]="project.key"
+              [src]="project.avatarObjectUrl || project.avatarUrls['24x24']"
+              (error)="loadProjectAvatarFallback(project)"
+              width="20"
+              height="20"
+              [alt]="project.key" />
+            <ng-template #projectAvatarFallback>
+              <span class="project-avatar project-avatar-fallback" [ngbTooltip]="project.key">
+                {{ getProjectAvatarInitials(project) }}
+              </span>
+            </ng-template>
             &nbsp; {{ project.name }}
           </td>
           <td>
