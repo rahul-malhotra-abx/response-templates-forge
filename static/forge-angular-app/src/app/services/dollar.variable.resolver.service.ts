@@ -2,6 +2,19 @@ import { JiraUserModel } from '../models/jira.user.model';
 
 import * as dayjs from 'dayjs';
 
+/**
+ * `renderedFields` values are HTML. They land in a plain-text node of the template, so the markup
+ * has to come out — otherwise the comment shows literal tags instead of the field's text.
+ */
+const renderedHtmlToText = (html: any): string => {
+  if (html === undefined || html === null) {
+    return '';
+  }
+
+  const parsedBody = new DOMParser().parseFromString(`${html}`, 'text/html').body;
+  return (parsedBody.textContent || '').replace(/\s+/g, ' ').trim();
+};
+
 export const DollarVariableResolverService = {
   /*********** CUSTOM DOLLAR VARIABLES ************/
   current_user_account_id: (params: { column: any; currentUser: JiraUserModel; projectData: any; issueData: any }): string => {
@@ -78,7 +91,7 @@ export const DollarVariableResolverService = {
     return params.issueData.fields[params.column.key] ? params.issueData.fields[params.column.key].name : '';
   },
   jiraDescriptionRenderer: (params: { column: any; currentUser: JiraUserModel; projectData: any; issueData: any }): string => {
-    return params.issueData.renderedFields.description?.replace(/\n/g, ' ');
+    return renderedHtmlToText(params.issueData.renderedFields.description);
   },
   jiraVotesRenderer: (params: { column: any; currentUser: JiraUserModel; projectData: any; issueData: any }): string => {
     return params.issueData.renderedFields.votes || 0;
@@ -93,6 +106,6 @@ export const DollarVariableResolverService = {
     return params.issueData.fields[params.column.key] ? params.issueData.fields[params.column.key].name : '';
   },
   jiraRenderedFieldRenderer: (params: { column: any; currentUser: JiraUserModel; projectData: any; issueData: any }): string => {
-    return params.issueData.renderedFields[params.column.key] || '';
+    return renderedHtmlToText(params.issueData.renderedFields[params.column.key]);
   },
 };

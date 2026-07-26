@@ -40,9 +40,10 @@ export class ProjectEnablementComponent implements OnInit, OnDestroy {
     this.pageLoaded = true;
   }
 
-  async updateStatus(index: number) {
-    const currentProject = this.projects[index];
-    await JiraService.saveProjectSettings(currentProject.adminSettings, currentProject.id);
+  async updateStatus(project: any) {
+    // Takes the project itself: the row index comes from the search-filtered list, so it pointed
+    // at the wrong entry of `projects` whenever a search was active.
+    await JiraService.saveProjectSettings(project.adminSettings, project.id);
   }
 
   ngOnDestroy() {

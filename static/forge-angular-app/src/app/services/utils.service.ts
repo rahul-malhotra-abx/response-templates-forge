@@ -3,6 +3,7 @@ import { ALLOWED_JIRA_COLUMN_RENDERERS } from '../models/allowed.jira.column.ren
 import { Template, TemplateScopes } from '../models/template.model';
 import { ENVIRONMENT } from '../environment';
 import { DEFAULT_LIMITS } from '../models/default.limits';
+import { alert } from 'basic-modals';
 
 export class UtilsService {
   static mergeJiraDataKeys(properties: any, prefix: string) {
@@ -185,6 +186,32 @@ export class UtilsService {
       }
     }
     return false;
+  }
+
+  /**
+   * Returns whether the text made it to the clipboard, so callers can confirm to the user. The
+   * textarea fallback is for embedded frames where the async clipboard API is blocked.
+   */
+  static async copyTextToClipboard(text: string): Promise<boolean> {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (e) {}
+
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.setAttribute('readonly', '');
+    textArea.style.position = 'fixed';
+    textArea.style.opacity = '0';
+    document.body.appendChild(textArea);
+    textArea.select();
+    try {
+      return document.execCommand('copy');
+    } catch (e) {
+      return false;
+    } finally {
+      document.body.removeChild(textArea);
+    }
   }
 
   static canAddTemplate(scope: string, projectTemplates: Template[], personalTemplates: Template[]) {

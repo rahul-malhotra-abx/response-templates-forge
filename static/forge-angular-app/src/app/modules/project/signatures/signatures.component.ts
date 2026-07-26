@@ -61,6 +61,13 @@ export class SignaturesComponent implements OnInit {
   }
 
   openEditSignatureModal(signature: SignatureTemplate): void {
+    // Hiding the Add button was the only thing enforcing the cap, and it used `<=`, so the 11th
+    // signature could still be created.
+    if (!signature && this.allSignatures.length >= DEFAULT_LIMITS.USER_SIGNATURES) {
+      alert(`Cannot add more than ${DEFAULT_LIMITS.USER_SIGNATURES} signatures.`);
+      return;
+    }
+
     const newSignature = !signature;
     signature = signature || {
       id: uuidv4(),
@@ -93,7 +100,7 @@ export class SignaturesComponent implements OnInit {
           this.signatures.push(result);
         }
         await this.signatureStorageService.save(this.signatures);
-        AnalyticalService.sendEvent(matchedIndex ? ANALYTICAL_EVENTS.EDIT_ITEM : ANALYTICAL_EVENTS.ADD_ITEM, 'user.signatures', {
+        AnalyticalService.sendEvent(matchedIndex > -1 ? ANALYTICAL_EVENTS.EDIT_ITEM : ANALYTICAL_EVENTS.ADD_ITEM, 'user.signatures', {
           item_name: result.name,
           active_signature: result.active,
         });

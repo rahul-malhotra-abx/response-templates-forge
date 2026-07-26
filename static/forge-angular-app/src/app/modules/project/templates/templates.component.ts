@@ -80,6 +80,36 @@ export class TemplatesComponent implements OnInit {
     });
   }
 
+  /**
+   * Templates are re-read from storage before every write. The lists loaded with the page go stale
+   * as soon as anything is created elsewhere (another tab, an issue view, another admin), which let
+   * duplicate names through and made each save overwrite whatever had been added since.
+   */
+  private async loadTemplatesForScope(scope: string): Promise<Template[]> {
+    const storageService = scope === TemplateScopes.PERSONAL ? this.personalTemplateStorageService : this.projectTemplateStorageService;
+    return ((await storageService?.get()) || []) as Template[];
+  }
+
+  private async saveTemplatesForScope(scope: string, templates: Template[]) {
+    if (scope === TemplateScopes.PERSONAL) {
+      this.personalTemplates = templates;
+      await this.personalTemplateStorageService.save(templates);
+    } else {
+      this.projectTemplates = templates;
+      await this.projectTemplateStorageService.save(templates);
+    }
+    this.refreshAllTemplates();
+  }
+
+  private refreshAllTemplates() {
+    this.allTemplates = [...this.projectTemplates, ...this.personalTemplates, ...this.globalTemplates].sort(UtilsService.dynamicSort('name'));
+  }
+
+  private static isNameTaken(templates: Template[], name: string, templateId: string) {
+    const comparableName = (name || '').trim().toLowerCase();
+    return templates.some((template) => template.id !== templateId && (template.name || '').trim().toLowerCase() === comparableName);
+  }
+
   openImportTemplateModal() {
     const dialogRef = this.dialog.open(ImportTemplateComponent, {
       width: '600px',
@@ -90,24 +120,27 @@ export class TemplatesComponent implements OnInit {
 
     dialogRef.afterClosed().subscribe(async (result) => {
       if (result) {
+        const currentTemplates = await this.loadTemplatesForScope(TemplateScopes.PROJECT);
         for (const template of result) {
           const templateCopy = UtilsService.deepCopy(template);
           delete templateCopy.checked;
           templateCopy.id = uuidv4();
           templateCopy.updatedAt = new Date();
           templateCopy.name = `${templateCopy.name} (Imported)`;
-          this.projectTemplates.push(templateCopy);
+          currentTemplates.push(templateCopy);
         }
-        await this.projectTemplateStorageService.save(this.projectTemplates);
-        this.allTemplates = [...this.projectTemplates, ...this.personalTemplates, ...this.globalTemplates];
-        this.allTemplates = this.allTemplates.sort(UtilsService.dynamicSort('name'));
+        await this.saveTemplatesForScope(TemplateScopes.PROJECT, currentTemplates);
         AnalyticalService.sendEvent(ANALYTICAL_EVENTS.IMPORT_ITEM, 'project.templates', {});
       }
     });
   }
 
-  openEditTemplateModal(template: Template, scope?: string): void {
-    if (!template && !UtilsService.canAddTemplate(scope, this.projectTemplates, this.personalTemplates)) {
+  async openEditTemplateModal(template: Template, scope?: string): Promise<void> {
+    const targetScope = template?.scope || scope;
+    const projectTemplates = await this.loadTemplatesForScope(TemplateScopes.PROJECT);
+    const personalTemplates = await this.loadTemplatesForScope(TemplateScopes.PERSONAL);
+
+    if (!template && !UtilsService.canAddTemplate(scope, projectTemplates, personalTemplates)) {
       return;
     }
 
@@ -125,122 +158,110 @@ export class TemplatesComponent implements OnInit {
       width: '600px',
       data: {
         template: JSON.parse(JSON.stringify(template)),
-        templates: scope === TemplateScopes.PROJECT ? this.projectTemplates : this.personalTemplates,
+        templates: targetScope === TemplateScopes.PROJECT ? projectTemplates : personalTemplates,
         projectIdOrKey: this.projectIdOrKey,
         isAdmin: this.isAdmin,
         newTemplate,
+        // Re-checked against storage when OK is pressed, so a template created while this dialog
+        // was open still blocks the name.
+        validateName: async (name: string, templateId: string) => {
+          const currentTemplates = await this.loadTemplatesForScope(targetScope);
+          return TemplatesComponent.isNameTaken(currentTemplates, name, templateId)
+            ? 'Template name is already in use, please use another name.'
+            : null;
+        },
       },
     });
 
     dialogRef.afterClosed().subscribe(async (result) => {
       if (result) {
-        let matchedIndex: number;
-        if (result.scope === TemplateScopes.PERSONAL) {
-          matchedIndex = this.personalTemplates.findIndex((t) => t.id === result.id);
-          result.updatedAt = new Date();
-          result.updatedBy = UtilsService.stripUserModel(this.currentUser);
-          if (matchedIndex > -1) {
-            this.personalTemplates[matchedIndex] = result;
-          } else {
-            this.personalTemplates.push(result);
-          }
-          await this.personalTemplateStorageService.save(this.personalTemplates);
-          AnalyticalService.sendEvent(matchedIndex ? ANALYTICAL_EVENTS.EDIT_ITEM : ANALYTICAL_EVENTS.ADD_ITEM, 'personal.templates', {
-            item_name: result.name,
-            starred: result.starred,
-            fields_used: UtilsService.templateContainsDollarVariables(result),
-          });
-          AnalyticalService.sendEvent(ANALYTICAL_EVENTS.VIEW_ITEM_LIST, 'personal.templates', {
-            item_count: this.personalTemplates.length,
-            favorite_count: this.personalTemplates.filter((t) => t.starred).length,
-          });
-        } else if (result.scope === TemplateScopes.PROJECT) {
-          matchedIndex = this.projectTemplates.findIndex((t) => t.id === result.id);
-          result.updatedAt = new Date();
-          result.updatedBy = this.currentUser;
-          if (matchedIndex > -1) {
-            this.projectTemplates[matchedIndex] = result;
-          } else {
-            this.projectTemplates.push(result);
-          }
-          await this.projectTemplateStorageService.save(this.projectTemplates);
-          AnalyticalService.sendEvent(matchedIndex > -1 ? ANALYTICAL_EVENTS.EDIT_ITEM : ANALYTICAL_EVENTS.ADD_ITEM, 'project.templates', {
-            item_name: result.name,
-            starred: result.starred,
-            fields_used: UtilsService.templateContainsDollarVariables(result),
-          });
-          AnalyticalService.sendEvent(ANALYTICAL_EVENTS.VIEW_ITEM_LIST, 'project.templates', {
-            item_count: this.projectTemplates.length,
-            favorite_count: this.projectTemplates.filter((t) => t.starred).length,
-            project_id_or_key: this.projectIdOrKey,
-          });
+        if (result.scope !== TemplateScopes.PERSONAL && result.scope !== TemplateScopes.PROJECT) {
+          return;
         }
 
-        this.allTemplates = [...this.projectTemplates, ...this.personalTemplates, ...this.globalTemplates];
-        this.allTemplates = this.allTemplates.sort(UtilsService.dynamicSort('name'));
+        // Re-read so the save merges into whatever is in storage now instead of overwriting it
+        // with the list this page started with.
+        const currentTemplates = await this.loadTemplatesForScope(result.scope);
+        const matchedIndex = currentTemplates.findIndex((t) => t.id === result.id);
+        result.updatedAt = new Date();
+        result.updatedBy =
+          result.scope === TemplateScopes.PERSONAL ? UtilsService.stripUserModel(this.currentUser) : this.currentUser;
+        if (matchedIndex > -1) {
+          currentTemplates[matchedIndex] = result;
+        } else {
+          currentTemplates.push(result);
+        }
+        await this.saveTemplatesForScope(result.scope, currentTemplates);
+
+        const analyticsScope = result.scope === TemplateScopes.PERSONAL ? 'personal.templates' : 'project.templates';
+        AnalyticalService.sendEvent(matchedIndex > -1 ? ANALYTICAL_EVENTS.EDIT_ITEM : ANALYTICAL_EVENTS.ADD_ITEM, analyticsScope, {
+          item_name: result.name,
+          starred: result.starred,
+          fields_used: UtilsService.templateContainsDollarVariables(result),
+        });
+        AnalyticalService.sendEvent(ANALYTICAL_EVENTS.VIEW_ITEM_LIST, analyticsScope, {
+          item_count: currentTemplates.length,
+          favorite_count: currentTemplates.filter((t) => t.starred).length,
+          ...(result.scope === TemplateScopes.PROJECT ? { project_id_or_key: this.projectIdOrKey } : {}),
+        });
       }
     });
   }
 
   async toggleTemplateStar(template: Template) {
-    template.starred = !template.starred;
-    if (template.scope === TemplateScopes.PERSONAL) {
-      await this.personalTemplateStorageService.save(this.personalTemplates);
-      AnalyticalService.sendEvent(ANALYTICAL_EVENTS.EDIT_ITEM, 'personal.templates', {
-        item_name: template.name,
-        starred: template.starred,
-        fields_used: UtilsService.templateContainsDollarVariables(template),
-      });
-    } else if (template.scope === TemplateScopes.PROJECT) {
-      await this.projectTemplateStorageService.save(this.projectTemplates);
-      AnalyticalService.sendEvent(ANALYTICAL_EVENTS.EDIT_ITEM, 'project.templates', {
-        item_name: template.name,
-        starred: template.starred,
-        fields_used: UtilsService.templateContainsDollarVariables(template),
-      });
+    if (template.scope !== TemplateScopes.PERSONAL && template.scope !== TemplateScopes.PROJECT) {
+      return;
     }
+
+    template.starred = !template.starred;
+    const currentTemplates = await this.loadTemplatesForScope(template.scope);
+    const matchedTemplate = currentTemplates.find((t) => t.id === template.id);
+    if (matchedTemplate) {
+      matchedTemplate.starred = template.starred;
+    }
+    await this.saveTemplatesForScope(template.scope, currentTemplates);
+
+    AnalyticalService.sendEvent(
+      ANALYTICAL_EVENTS.EDIT_ITEM,
+      template.scope === TemplateScopes.PERSONAL ? 'personal.templates' : 'project.templates',
+      {
+        item_name: template.name,
+        starred: template.starred,
+        fields_used: UtilsService.templateContainsDollarVariables(template),
+      },
+    );
   }
 
   async deleteTemplate(template: Template) {
-    if (await confirm('Are you sure?')) {
-      if (template.scope === TemplateScopes.PERSONAL) {
-        const index = this.personalTemplates.findIndex((t) => t.id === template.id);
-        const templateToBeDelete: Template = this.personalTemplates.splice(index, 1)[0] as Template;
-        await this.personalTemplateStorageService.save(this.personalTemplates);
-        this.toastr.success(`${templateToBeDelete.name} deleted successfully`, `Success`);
-        AnalyticalService.sendEvent(ANALYTICAL_EVENTS.DELETE_ITEM, 'personal.templates', {
-          item_name: template.name,
-          starred: template.starred,
-          fields_used: UtilsService.templateContainsDollarVariables(template),
-        });
-        AnalyticalService.sendEvent(ANALYTICAL_EVENTS.VIEW_ITEM_LIST, 'personal.templates', {
-          item_count: this.personalTemplates.length,
-          favorite_count: this.personalTemplates.filter((t) => t.starred).length,
-        });
-      } else if (template.scope === TemplateScopes.PROJECT) {
-        const index = this.projectTemplates.findIndex((t) => t.id === template.id);
-        const templateToBeDelete: Template = this.projectTemplates.splice(index, 1)[0] as Template;
-        await this.projectTemplateStorageService.save(this.projectTemplates);
-        this.toastr.success(`${templateToBeDelete.name} deleted successfully`, `Success`);
-        AnalyticalService.sendEvent(ANALYTICAL_EVENTS.DELETE_ITEM, 'personal.templates', {
-          item_name: template.name,
-          starred: template.starred,
-          fields_used: UtilsService.templateContainsDollarVariables(template),
-        });
-        AnalyticalService.sendEvent(ANALYTICAL_EVENTS.VIEW_ITEM_LIST, 'project.templates', {
-          item_count: this.projectTemplates.length,
-          favorite_count: this.projectTemplates.filter((t) => t.starred).length,
-          project_id_or_key: this.projectIdOrKey,
-        });
-      }
+    if (template.scope !== TemplateScopes.PERSONAL && template.scope !== TemplateScopes.PROJECT) {
+      return;
+    }
 
-      this.allTemplates = [...this.projectTemplates, ...this.personalTemplates, ...this.globalTemplates];
-      this.allTemplates = this.allTemplates.sort(UtilsService.dynamicSort('name'));
+    if (await confirm('Are you sure?')) {
+      const currentTemplates = await this.loadTemplatesForScope(template.scope);
+      const index = currentTemplates.findIndex((t) => t.id === template.id);
+      const templateToBeDelete: Template = index > -1 ? (currentTemplates.splice(index, 1)[0] as Template) : template;
+      await this.saveTemplatesForScope(template.scope, currentTemplates);
+      this.toastr.success(`${templateToBeDelete.name} deleted successfully`, `Success`);
+
+      const analyticsScope = template.scope === TemplateScopes.PERSONAL ? 'personal.templates' : 'project.templates';
+      AnalyticalService.sendEvent(ANALYTICAL_EVENTS.DELETE_ITEM, analyticsScope, {
+        item_name: template.name,
+        starred: template.starred,
+        fields_used: UtilsService.templateContainsDollarVariables(template),
+      });
+      AnalyticalService.sendEvent(ANALYTICAL_EVENTS.VIEW_ITEM_LIST, analyticsScope, {
+        item_count: currentTemplates.length,
+        favorite_count: currentTemplates.filter((t) => t.starred).length,
+        ...(template.scope === TemplateScopes.PROJECT ? { project_id_or_key: this.projectIdOrKey } : {}),
+      });
     }
   }
 
   async cloneTemplate(template: Template) {
-    if (!UtilsService.canAddTemplate(template.scope, this.projectTemplates, this.personalTemplates)) {
+    const projectTemplates = await this.loadTemplatesForScope(TemplateScopes.PROJECT);
+    const personalTemplates = await this.loadTemplatesForScope(TemplateScopes.PERSONAL);
+    if (!UtilsService.canAddTemplate(template.scope, projectTemplates, personalTemplates)) {
       return;
     }
 

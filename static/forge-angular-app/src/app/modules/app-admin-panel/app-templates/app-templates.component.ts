@@ -50,7 +50,7 @@ export class AppTemplatesComponent implements OnInit {
     }
 
     if (ENVIRONMENT.PAID_VERSION && templates.length >= DEFAULT_LIMITS.GLOBAL_TEMPLATE_COUNT) {
-      alert(`Cannot add more than ${DEFAULT_LIMITS.FREE_GLOBAL_TEMPLATE_COUNT} global templates.`);
+      alert(`Cannot add more than ${DEFAULT_LIMITS.GLOBAL_TEMPLATE_COUNT} global templates.`);
       return false;
     }
 

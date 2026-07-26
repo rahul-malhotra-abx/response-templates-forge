@@ -244,40 +244,8 @@ resolver.define("getAllProjects", async ({ payload }) => {
   return await parseJsonResponse(response);
 });
 
-resolver.define("addTicketComment", async ({ payload }) => {
-  const issueIdOrKey = payload?.issueIdOrKey;
-  const comment = payload?.comment;
-  if (!issueIdOrKey) {
-    throw new Error("issueIdOrKey is required.");
-  }
-  if (comment === undefined || comment === null) {
-    throw new Error("comment is required.");
-  }
-  const properties = Array.isArray(payload?.properties)
-    ? payload.properties
-    : [];
-  const internal = Boolean(payload?.internal);
-
-  if (internal) {
-    properties.push({
-      key: "sd.public.comment",
-      value: { internal: true },
-    });
-  }
-
-  const response = await api
-    .asApp()
-    .requestJira(route`/rest/api/3/issue/${issueIdOrKey}/comment`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        body: comment,
-        properties,
-      }),
-    });
-
-  return await parseJsonResponse(response);
-});
+// Comments and description edits are issued from the UI with @forge/bridge `requestJira`, so
+// Jira attributes them to the logged in user. Posting them here would run as the app instead.
 
 resolver.define("jiraRequest", async ({ payload, context }) => {
   const originalUrl = payload?.url;
@@ -485,7 +453,6 @@ resolver.define("getAppProperties", async ({ payload }) => {
     const forgeResponse = await api
       .asApp()
       .requestJira(route`/rest/forge/1/app/properties/${propertyKey}`);
-    let connectStatus = "skipped";
 
     if (forgeResponse.status !== 404) {
       const data = await parseJsonResponse(forgeResponse);
@@ -496,18 +463,12 @@ resolver.define("getAppProperties", async ({ payload }) => {
         .requestJira(
           route`/rest/atlassian-connect/1/addons/${addonKey}/properties/${propertyKey}`,
         );
-      connectStatus = connectResponse.status;
 
       if (connectResponse.status !== 404) {
         const data = await parseJsonResponse(connectResponse);
         connectProperties[data.key] = data.value;
       }
     }
-
-    // Diagnostic — remove once migration confirmed. Shows in `forge tunnel` console.
-    console.log(
-      `[getAppProperties] ${propertyKey} -> forge=${forgeResponse.status} connect=${connectStatus}`,
-    );
   }
 
   for (const propertyKey of properties) {

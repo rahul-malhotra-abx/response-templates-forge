@@ -111,12 +111,32 @@ export class JiraService {
     });
   }
 
+  /**
+   * Issue writes go through the bridge instead of the resolver, so Jira attributes them to the
+   * logged in user. The resolver runs `api.asApp()`, which posts as the app itself.
+   */
+  private static async requestJiraAsUser(path: string, options: any = {}) {
+    const response = await requestJira(path, {
+      ...options,
+      headers: {
+        Accept: 'application/json',
+        ...(options.body ? { 'Content-Type': 'application/json' } : {}),
+        ...(options.headers || {}),
+      },
+    });
+
+    const text = await response.text();
+    if (!response.ok) {
+      throw new Error(`Jira API error ${response.status}: ${text || response.statusText}`);
+    }
+
+    return text ? UtilsService.safeParse(text) : null;
+  }
+
   static async updateTicketDescription(ticketIdOrKey: string, description: any) {
-    await this.request({
-      url: `/rest/api/3/issue/${ticketIdOrKey}`,
-      type: 'PUT',
-      contentType: 'application/json',
-      data: JSON.stringify({ fields: { description } }),
+    await this.requestJiraAsUser(`/rest/api/3/issue/${ticketIdOrKey}`, {
+      method: 'PUT',
+      body: JSON.stringify({ fields: { description } }),
     });
   }
 
@@ -297,11 +317,16 @@ export class JiraService {
   }
 
   static async addTicketComment(ticketIdOrKey: string, comment: any, properties: any[] = [], internal: boolean = false) {
-    await invoke('addTicketComment', {
-      issueIdOrKey: ticketIdOrKey,
-      comment,
-      properties,
-      internal,
+    // `sd.public.comment` is always sent: a JSM comment created without it falls back to
+    // internal, so a public reply would silently land as an internal note.
+    const commentProperties = [
+      ...properties.filter((property) => property.key !== 'sd.public.comment'),
+      { key: 'sd.public.comment', value: { internal } },
+    ];
+
+    await this.requestJiraAsUser(`/rest/api/3/issue/${ticketIdOrKey}/comment`, {
+      method: 'POST',
+      body: JSON.stringify({ body: comment, properties: commentProperties }),
     });
   }
 
