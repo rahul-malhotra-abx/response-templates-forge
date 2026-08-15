@@ -43,6 +43,8 @@ export class EditTemplateComponent implements OnInit {
   newTemplate = false;
   currentCursorPos: { lastPosition: number; lastPositionPath: any[]; lastPositionParentOffset: number };
   templateScopes = TemplateScopes;
+  /** Optional last-moment name check against storage; returns an error message, or null when free. */
+  validateName: (name: string, templateId: string) => Promise<string | null>;
 
   constructor(
     private sanitizer: DomSanitizer,
@@ -57,6 +59,7 @@ export class EditTemplateComponent implements OnInit {
     this.scope = this.template.scope || dataFromPatent.scope;
     this.isAdmin = dataFromPatent.isAdmin;
     this.newTemplate = dataFromPatent.newTemplate;
+    this.validateName = dataFromPatent.validateName;
   }
 
   async ngOnInit() {
@@ -76,13 +79,15 @@ export class EditTemplateComponent implements OnInit {
     await this.loadEditor();
   }
 
-  copyToClipBoard(option) {
-    document.addEventListener('copy', (e) => {
-      e.clipboardData.setData('text/plain', '${' + option.key + '}');
-      e.preventDefault();
-      document.removeEventListener('copy', null);
-    });
-    document.execCommand('copy');
+  async copyToClipBoard(option) {
+    // The old implementation registered a 'copy' listener per click and tried to remove it with
+    // `null`, which is a no-op — every copy left another live handler behind.
+    const variable = '${' + option.key + '}';
+    if (await UtilsService.copyTextToClipboard(variable)) {
+      this.toastr.success(`${variable} copied to clipboard`, 'Copied');
+    } else {
+      this.toastr.error('Could not copy. Select the variable and copy it manually.', 'Copy failed');
+    }
   }
 
   async insertVariable(option) {
@@ -130,13 +135,22 @@ export class EditTemplateComponent implements OnInit {
   }
 
   async clickOk() {
-    if (!this.template.name) {
+    const name = (this.template.name || '').trim();
+
+    if (!name) {
       alert('Template name is required.');
       return;
     }
 
+    // The field can arrive pre-filled (clone, "Save as template"), so the input's maxLength is not
+    // enough — a name over the limit has to be rejected here until the user shortens it.
+    if (name.length > DEFAULT_LIMITS.TEMPLATE_NAME) {
+      alert(`Template name cannot be longer than ${DEFAULT_LIMITS.TEMPLATE_NAME} characters, please shorten it.`);
+      return;
+    }
+
     for (const template of this.templates) {
-      if (template.name === this.template.name && template.id !== this.template.id) {
+      if ((template.name || '').trim().toLowerCase() === name.toLowerCase() && template.id !== this.template.id) {
         alert('Template name is already in use, please use another name.');
         return;
       }
@@ -147,6 +161,17 @@ export class EditTemplateComponent implements OnInit {
       return;
     }
 
+    // The list above is whatever the caller loaded; ask it to re-check against storage so a
+    // template created elsewhere while this dialog was open still blocks the name.
+    if (this.validateName) {
+      const validationError = await this.validateName(name, this.template.id);
+      if (validationError) {
+        alert(validationError);
+        return;
+      }
+    }
+
+    this.template.name = name;
     const props = await this.frameWrapper.getProps();
     this.dialogRef.close(this.template);
   }

@@ -44,6 +44,7 @@ export class EditSignatureComponent implements OnInit {
 
   constructor(
     private sanitizer: DomSanitizer,
+    private toastr: ToastrService,
     private dialogRef: MatDialogRef<EditSignatureComponent>,
     @Inject(MAT_DIALOG_DATA) public dataFromPatent: any
   ) {
@@ -72,13 +73,13 @@ export class EditSignatureComponent implements OnInit {
     await this.loadEditor();
   }
 
-  copyToClipBoard(option) {
-    document.addEventListener('copy', (e) => {
-      e.clipboardData.setData('text/plain', '${' + option.key + '}');
-      e.preventDefault();
-      document.removeEventListener('copy', null);
-    });
-    document.execCommand('copy');
+  async copyToClipBoard(option) {
+    const variable = '${' + option.key + '}';
+    if (await UtilsService.copyTextToClipboard(variable)) {
+      this.toastr.success(`${variable} copied to clipboard`, 'Copied');
+    } else {
+      this.toastr.error('Could not copy. Select the variable and copy it manually.', 'Copy failed');
+    }
   }
 
   cancelEditing() {

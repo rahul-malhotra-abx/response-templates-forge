@@ -89,7 +89,7 @@ export class TicketResponseComponent implements OnInit {
     // CODE OPTIMIZATION (Repeated code/function)
     const fetchUserRoles = ['SYSTEM_ADMIN', 'ADMINISTER', 'ADMINISTER_PROJECTS', 'EDIT_ISSUES'];
     const responseTemplateAdminRole = ['SYSTEM_ADMIN', 'ADMINISTER', 'ADMINISTER_PROJECTS'];
-    const userPermissions = await JiraService.getUserPermissions(fetchUserRoles);
+    const userPermissions = await JiraService.getUserPermissions(fetchUserRoles, this.projectIdOrKey);
     if (UtilsService.hasOneOfPermission(responseTemplateAdminRole, userPermissions)) {
       this.isAdmin = true;
     }
@@ -287,12 +287,34 @@ export class TicketResponseComponent implements OnInit {
     this.currentTabLabel = tabChangeEvent.tab.textLabel;
   }
 
-  saveAsNewTemplate() {
-    this.isSavingTemplate = true;
-    const projectTemplates = [...this.templates].filter((template) => template.scope === TemplateScopes.PROJECT);
-    const personalTemplates = [...this.templates].filter((template) => template.scope === TemplateScopes.PERSONAL);
+  /**
+   * Templates are re-read from storage instead of reusing the list loaded with the issue view.
+   * That snapshot goes stale as soon as anything is created elsewhere, which let duplicate names
+   * through and made the save overwrite templates added since the page loaded.
+   */
+  private async loadTemplatesForScope(scope: string): Promise<Template[]> {
+    const storageService = scope === TemplateScopes.PERSONAL ? this.personalTemplateStorageService : this.projectTemplateStorageService;
+    return ((await storageService?.get()) || []) as Template[];
+  }
 
-    if (!this.usedTemplate && !UtilsService.canAddTemplate(this.usedTemplate.scope, projectTemplates, personalTemplates)) {
+  private static isNameTaken(templates: Template[], name: string, templateId: string) {
+    const comparableName = (name || '').trim().toLowerCase();
+    return templates.some((template) => template.id !== templateId && (template.name || '').trim().toLowerCase() === comparableName);
+  }
+
+  async saveAsNewTemplate() {
+    this.isSavingTemplate = true;
+
+    // A response composed in the editor has no scope and a global template is saved back as a
+    // project one, so the limit has to be checked against the scope the copy actually lands in.
+    const targetScope =
+      this.usedTemplate?.scope && this.usedTemplate.scope !== TemplateScopes.GLOBAL ? this.usedTemplate.scope : TemplateScopes.PROJECT;
+
+    const projectTemplates = await this.loadTemplatesForScope(TemplateScopes.PROJECT);
+    const personalTemplates = await this.loadTemplatesForScope(TemplateScopes.PERSONAL);
+
+    if (!this.usedTemplate || !UtilsService.canAddTemplate(targetScope, projectTemplates, personalTemplates)) {
+      this.isSavingTemplate = false;
       return;
     }
 
@@ -301,7 +323,7 @@ export class TicketResponseComponent implements OnInit {
       name: this.usedTemplate.name !== '' ? 'Copy of ' + this.usedTemplate.name : 'New Template',
       content: this.usedTemplate.content,
       starred: false,
-      scope: this.usedTemplate.scope !== '' && this.usedTemplate.scope !== TemplateScopes.GLOBAL ? this.usedTemplate.scope : TemplateScopes.PROJECT,
+      scope: targetScope,
       updatedAt: new Date(),
       updatedBy: this.currentUser,
     };
@@ -311,10 +333,18 @@ export class TicketResponseComponent implements OnInit {
       height: '95%',
       data: {
         template: JSON.parse(JSON.stringify(newTemplate)),
-        templates: newTemplate.scope === TemplateScopes.PROJECT ? projectTemplates : personalTemplates,
+        templates: targetScope === TemplateScopes.PROJECT ? projectTemplates : personalTemplates,
         projectIdOrKey: this.projectIdOrKey,
         isAdmin: this.isAdmin,
         newTemplate,
+        // Re-checked against storage when OK is pressed, so a template created while this dialog
+        // was open still blocks the name.
+        validateName: async (name: string, templateId: string) => {
+          const currentTemplates = await this.loadTemplatesForScope(targetScope);
+          return TicketResponseComponent.isNameTaken(currentTemplates, name, templateId)
+            ? 'Template name is already in use, please use another name.'
+            : null;
+        },
       },
     });
 
@@ -322,17 +352,26 @@ export class TicketResponseComponent implements OnInit {
       if (result) {
         let matchedIndex: number;
         if (result.scope === TemplateScopes.PERSONAL) {
-          matchedIndex = personalTemplates.findIndex((t) => t.id === result.id);
+          // Re-read so the save merges into whatever is in storage now instead of overwriting it
+          // with the list this issue view started with.
+          const currentTemplates = await this.loadTemplatesForScope(TemplateScopes.PERSONAL);
+          matchedIndex = currentTemplates.findIndex((t) => t.id === result.id);
           result.updatedAt = new Date();
           result.updatedBy = UtilsService.stripUserModel(this.currentUser);
           if (matchedIndex > -1) {
-            personalTemplates[matchedIndex] = result;
+            currentTemplates[matchedIndex] = result;
           } else {
-            personalTemplates.push(result);
+            currentTemplates.push(result);
             this.templates.push(result);
             this.filterList('IGNORE_EVENT', 'All');
           }
-          await this.personalTemplateStorageService.save(personalTemplates);
+          try {
+            await this.personalTemplateStorageService.save(currentTemplates);
+          } catch (e) {
+            // StorageService has already explained the failure; nothing was stored.
+            this.isSavingTemplate = false;
+            return;
+          }
           JiraService.showFlag({
             title: 'Success',
             close: 'auto',
@@ -340,27 +379,33 @@ export class TicketResponseComponent implements OnInit {
             type: 'success',
           });
           this.usedTemplate = UtilsService.deepCopy(result);
-          AnalyticalService.sendEvent(matchedIndex ? ANALYTICAL_EVENTS.EDIT_ITEM : ANALYTICAL_EVENTS.ADD_ITEM, 'personal.templates', {
+          AnalyticalService.sendEvent(matchedIndex > -1 ? ANALYTICAL_EVENTS.EDIT_ITEM : ANALYTICAL_EVENTS.ADD_ITEM, 'personal.templates', {
             item_name: result.name,
             starred: result.starred,
             fields_used: UtilsService.templateContainsDollarVariables(result),
           });
           AnalyticalService.sendEvent(ANALYTICAL_EVENTS.VIEW_ITEM_LIST, 'personal.templates', {
-            item_count: personalTemplates.length,
-            favorite_count: personalTemplates.filter((t) => t.starred).length,
+            item_count: currentTemplates.length,
+            favorite_count: currentTemplates.filter((t) => t.starred).length,
           });
         } else if (result.scope === TemplateScopes.PROJECT) {
-          matchedIndex = projectTemplates.findIndex((t) => t.id === result.id);
+          const currentTemplates = await this.loadTemplatesForScope(TemplateScopes.PROJECT);
+          matchedIndex = currentTemplates.findIndex((t) => t.id === result.id);
           result.updatedAt = new Date();
           result.updatedBy = this.currentUser;
           if (matchedIndex > -1) {
-            projectTemplates[matchedIndex] = result;
+            currentTemplates[matchedIndex] = result;
           } else {
-            projectTemplates.push(result);
+            currentTemplates.push(result);
             this.templates.push(result);
             this.filterList('IGNORE_EVENT', 'All');
           }
-          await this.projectTemplateStorageService.save(projectTemplates);
+          try {
+            await this.projectTemplateStorageService.save(currentTemplates);
+          } catch (e) {
+            this.isSavingTemplate = false;
+            return;
+          }
           JiraService.showFlag({
             title: 'Success',
             close: 'auto',
@@ -374,8 +419,8 @@ export class TicketResponseComponent implements OnInit {
             fields_used: UtilsService.templateContainsDollarVariables(result),
           });
           AnalyticalService.sendEvent(ANALYTICAL_EVENTS.VIEW_ITEM_LIST, 'project.templates', {
-            item_count: projectTemplates.length,
-            favorite_count: projectTemplates.filter((t) => t.starred).length,
+            item_count: currentTemplates.length,
+            favorite_count: currentTemplates.filter((t) => t.starred).length,
             project_id_or_key: this.projectIdOrKey,
           });
         }
@@ -395,19 +440,30 @@ export class TicketResponseComponent implements OnInit {
   }
 
   async postComment(internalComment: boolean = false, updateDescription?: boolean) {
-    updateDescription
-      ? await JiraService.updateTicketDescription(this.issueIdOrKey, this.usedTemplate.content)
-      : await JiraService.addTicketComment(
-          this.issueIdOrKey,
-          this.usedTemplate.content,
-          [
-            {
-              key: 'templateId',
-              value: { id: this.usedTemplate.id },
-            },
-          ],
-          internalComment,
-        );
+    try {
+      updateDescription
+        ? await JiraService.updateTicketDescription(this.issueIdOrKey, this.usedTemplate.content)
+        : await JiraService.addTicketComment(
+            this.issueIdOrKey,
+            this.usedTemplate.content,
+            [
+              {
+                key: 'templateId',
+                value: { id: this.usedTemplate.id },
+              },
+            ],
+            internalComment,
+          );
+    } catch (e) {
+      JiraService.showFlag({
+        title: 'Error',
+        body: updateDescription
+          ? 'Could not update the description. Please check your permissions and try again.'
+          : 'Could not post the comment. Please check your permissions and try again.',
+        type: 'error',
+      });
+      return;
+    }
     JiraService.showFlag({
       title: 'Success',
       close: 'auto',
@@ -468,7 +524,11 @@ export class TicketResponseComponent implements OnInit {
         value: activeSignature ? activeSignature.content : '',
       });
     }
-    this.currentTabIndex = this.tabMapping.find((tab) => tab.key === tabKey)?.position || 0;
+    // Without a tab key — inserting a template while already editing — keep the tab the user
+    // picked. Resetting the index forced every JSM response back to "Add internal note".
+    if (tabKey) {
+      this.currentTabIndex = this.tabMapping.find((tab) => tab.key === tabKey)?.position ?? 0;
+    }
     this.currentTabLabel = this.tabMapping[this.currentTabIndex].label;
   }
 

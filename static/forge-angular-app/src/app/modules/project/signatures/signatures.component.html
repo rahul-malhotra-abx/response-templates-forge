@@ -1,6 +1,6 @@
 <div class="d-flex my-3 justify-content-between">
   <p class="mb-0 text-bigger">Manage Signatures</p>
-  <div *ngIf="pageLoaded && allSignatures.length <= defaultSignatureLimit">
+  <div *ngIf="pageLoaded && allSignatures.length < defaultSignatureLimit">
     <button class="btn btn-primary me-2" (click)="openEditSignatureModal(undefined)">
       <i class="fa fa-plus me-2"></i>
       Add a Signature

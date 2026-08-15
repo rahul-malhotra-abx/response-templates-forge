@@ -55,7 +55,7 @@
             <input
               type="checkbox"
               class="form-check-inline cursor-pointer me-1"
-              (change)="updateStatus($index)"
+              (change)="updateStatus(project)"
               [(ngModel)]="project.adminSettings.responseTemplatesEnabled"
               [id]="'rt-enabled-' + $index" />
             <label class="ms-1 fw-normal cursor-pointer" [for]="'rt-enabled-' + $index">
