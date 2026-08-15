@@ -451,6 +451,11 @@ export class TicketResponseComponent implements OnInit {
       type: 'success',
     });
     await this.saveRecentTemplates([...this.multipleUsedTemplates]);
+    // Connect reloaded the whole issue page here, which reset the panel as a side effect. Refreshing
+    // the issue view in place does not, so the composer is cleared explicitly — otherwise the text
+    // sits there after it has already been posted, and looks unsent.
+    this.usedTemplate = undefined;
+    await this.cancelEditing();
     JiraService.refreshIssuePage();
   }
 

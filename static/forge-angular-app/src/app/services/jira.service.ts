@@ -2,7 +2,7 @@ import { JiraUserModel } from '../models/jira.user.model';
 import { UtilsService } from './utils.service';
 import { ENVIRONMENT } from '../environment';
 import { DataStorageKeys } from '../models/data.storage.keys.model';
-import { invoke, requestJira, showFlag as forgeShowFlag } from '@forge/bridge';
+import { invoke, requestJira, showFlag as forgeShowFlag, view } from '@forge/bridge';
 
 export class JiraService {
   static cache: any = {
@@ -165,8 +165,13 @@ export class JiraService {
     });
   }
 
+  /**
+   * Connect's `AP.jira.refreshIssuePage()`. Updates the issue view in place so a comment the app
+   * just posted appears without the user reloading. Not every module view can refresh — the issue
+   * action modal cannot — and the comment is posted either way, so a refusal is not worth surfacing.
+   */
   static refreshIssuePage() {
-    return;
+    view.refresh().catch(() => undefined);
   }
 
   static async checkIssuesAgainstJQLs(issueIds: any[], JQLs: string[]) {
