@@ -1,7 +1,41 @@
 import Resolver from "@forge/resolver";
-import api, { assumeTrustedRoute, route } from "@forge/api";
+import api, { assumeTrustedRoute, getAppContext, route } from "@forge/api";
 
 const resolver = new Resolver();
+
+/**
+ * `context.license` is only populated for a paid app in production, so an absent licence means "not
+ * production" far more often than it means "unlicensed" — reading absence as unlicensed would lock
+ * every development install out of its own data. Present: trust it, which is also what
+ * `forge install --license inactive` produces. Absent: only fatal in production.
+ */
+function isLicenseActive(license, environmentType) {
+  if (license) {
+    return license.active !== false;
+  }
+
+  return String(environmentType || "").toUpperCase() !== "PRODUCTION";
+}
+
+/**
+ * Unlicensed is read-only rather than shut out: templates stay readable and only writes stop. The
+ * modules are already hidden from unlicensed users by Forge itself, so this catches the licence
+ * that lapses under someone mid-session.
+ */
+function assertLicensed(context) {
+  let environmentType = "";
+  try {
+    environmentType = getAppContext()?.environmentType || "";
+  } catch (_error) {
+    environmentType = "";
+  }
+
+  if (!isLicenseActive(context?.license, environmentType)) {
+    throw new Error(
+      "Your Response Templates for Jira licence is not active, so changes cannot be saved.",
+    );
+  }
+}
 
 function truncateForLog(value, maxLength = 1200) {
   if (value === undefined || value === null) {
@@ -211,7 +245,9 @@ resolver.define("getProjectSettings", async ({ payload }) => {
   return data?.value;
 });
 
-resolver.define("saveProjectSettings", async ({ payload }) => {
+resolver.define("saveProjectSettings", async ({ payload, context }) => {
+  assertLicensed(context);
+
   const projectIdOrKey = payload?.projectIdOrKey;
   const storageKey = payload?.storageKey;
   const projectSettings = payload?.projectSettings;
@@ -327,7 +363,9 @@ resolver.define("getProjectProperties", async ({ payload }) => {
   return responseProperties;
 });
 
-resolver.define("saveProjectProperties", async ({ payload }) => {
+resolver.define("saveProjectProperties", async ({ payload, context }) => {
+  assertLicensed(context);
+
   const projectIdOrKey = payload?.projectIdOrKey;
   const properties = Array.isArray(payload?.properties)
     ? payload.properties
@@ -372,7 +410,9 @@ resolver.define("getIssueProperties", async ({ payload }) => {
   return responseProperties;
 });
 
-resolver.define("saveIssueProperties", async ({ payload }) => {
+resolver.define("saveIssueProperties", async ({ payload, context }) => {
+  assertLicensed(context);
+
   const issueIdOrKey = payload?.issueIdOrKey;
   const properties = Array.isArray(payload?.properties)
     ? payload.properties
@@ -420,7 +460,9 @@ resolver.define("getUserProperties", async ({ payload }) => {
   return result;
 });
 
-resolver.define("saveUserProperties", async ({ payload }) => {
+resolver.define("saveUserProperties", async ({ payload, context }) => {
+  assertLicensed(context);
+
   const properties = Array.isArray(payload?.properties)
     ? payload.properties
     : [];
@@ -476,14 +518,41 @@ async function saveForgeAppProperties(properties) {
   }
 }
 
+/**
+ * Global templates were written to the Connect add-on property store before the migration, and
+ * Forge writes to its own. Never fatal: a legacy store that refuses the request — the Connect key is
+ * gone, or was never ours — must leave the caller on Forge data rather than take the screen down.
+ */
+async function readLegacyAppProperty(addonKey, propertyKey) {
+  try {
+    const response = await api
+      .asApp()
+      .requestJira(
+        route`/rest/atlassian-connect/1/addons/${addonKey}/properties/${propertyKey}`,
+      );
+
+    if (!response.ok) {
+      return undefined;
+    }
+
+    const data = await parseJsonResponse(response);
+    return data?.value;
+  } catch (error) {
+    console.error("Legacy app property read failed", {
+      propertyKey,
+      message: error?.message,
+    });
+    return undefined;
+  }
+}
+
 resolver.define("getAppProperties", async ({ payload }) => {
   const properties = Array.isArray(payload?.properties)
     ? payload.properties
     : [];
   const addonKey = payload?.addonKey || "com.appbox.ai.response.templates";
-  const forgeProperties = {};
-  const connectProperties = {};
   const result = {};
+  const carriedOver = [];
 
   for (const propertyKey of properties) {
     const forgeResponse = await api
@@ -492,33 +561,36 @@ resolver.define("getAppProperties", async ({ payload }) => {
 
     if (forgeResponse.status !== 404) {
       const data = await parseJsonResponse(forgeResponse);
-      forgeProperties[data.key] = data.value;
-    } else {
-      const connectResponse = await api
-        .asApp()
-        .requestJira(
-          route`/rest/atlassian-connect/1/addons/${addonKey}/properties/${propertyKey}`,
-        );
+      result[data.key] = data.value;
+      continue;
+    }
 
-      if (connectResponse.status !== 404) {
-        const data = await parseJsonResponse(connectResponse);
-        connectProperties[data.key] = data.value;
-      }
+    const legacyValue = await readLegacyAppProperty(addonKey, propertyKey);
+    if (legacyValue !== undefined) {
+      result[propertyKey] = legacyValue;
+      carriedOver.push({ key: propertyKey, value: legacyValue });
     }
   }
 
-  for (const propertyKey of properties) {
-    if (forgeProperties[propertyKey]) {
-      result[propertyKey] = forgeProperties[propertyKey];
-    } else if (connectProperties[propertyKey]) {
-      result[propertyKey] = connectProperties[propertyKey];
+  // Copy what the legacy store still holds into the Forge store, so the fallback stops running once
+  // a site has been read through. Idempotent: concurrent readers write the same bytes.
+  if (carriedOver.length > 0) {
+    try {
+      await saveForgeAppProperties(carriedOver);
+    } catch (error) {
+      // The read itself succeeded — the next read simply falls back again.
+      console.error("Copying legacy app properties forward failed", {
+        message: error?.message,
+      });
     }
   }
 
   return result;
 });
 
-resolver.define("saveAppProperties", async ({ payload }) => {
+resolver.define("saveAppProperties", async ({ payload, context }) => {
+  assertLicensed(context);
+
   const properties = Array.isArray(payload?.properties)
     ? payload.properties
     : [];

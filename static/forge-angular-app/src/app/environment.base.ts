@@ -8,8 +8,6 @@ const environments = {
     APP_MODE: 'RESPONSE_TEMPLATE_PRO',
     APP_KEY: 'com.appbox.ai.response.templates',
     APP_BASE_KEY: 'com.appbox.ai.response.templates',
-    ANALYTICS_ENABLED: true,
-    ALLOW_UNLICENSED: true,
     // EDITOR_APP_BASE_PATH: 'http://localhost:3001', // For Local Environment
     EDITOR_APP_BASE_PATH: 'https://jira-editor.appbox.ai',
     EDITOR_IFRAME_CHANNEL: 'iframed.react',
@@ -25,8 +23,6 @@ const environments = {
     APP_MODE: 'RESPONSE_TEMPLATE_FREE',
     APP_KEY: 'com.appbox.ai.response.templates.free',
     APP_BASE_KEY: 'com.appbox.ai.response.templates',
-    ANALYTICS_ENABLED: true,
-    ALLOW_UNLICENSED: true,
     // EDITOR_APP_BASE_PATH: 'http://localhost:3001', // For Local Environment
     EDITOR_APP_BASE_PATH: 'https://jira-editor.appbox.ai',
     EDITOR_IFRAME_CHANNEL: 'iframed.react',

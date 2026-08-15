@@ -188,37 +188,6 @@ export class JiraService {
     return;
   }
 
-  static async getDashboardProperties(dashboardId: string, dashboardItemId: string, property: string) {
-    const response = await this.request({
-      url: `/rest/api/3/dashboard/${dashboardId}/items/${dashboardItemId}/properties/`,
-      type: 'GET',
-      contentType: 'application/json',
-    });
-    let keyIndex = response.keys.findIndex((k: { key: string }) => k.key === property);
-    if (keyIndex > -1) {
-      const propertyResponse = await this.request({
-        url: `/rest/api/3/dashboard/${dashboardId}/items/${dashboardItemId}/properties/${property}`,
-        type: 'GET',
-        contentType: 'application/json',
-      });
-      const returnObj: { [key: string]: any } = {};
-      returnObj[propertyResponse.key] = propertyResponse.value;
-      return propertyResponse?.value ? returnObj : {};
-    }
-    return {};
-  }
-
-  static async saveDashboardProperties(dashboardId: string, dashboardItemId: string, properties: any[]) {
-    for (const property of properties) {
-      await this.request({
-        url: `/rest/api/3/dashboard/${dashboardId}/items/${dashboardItemId}/properties/${property.key}`,
-        type: 'PUT',
-        contentType: 'application/json',
-        data: JSON.stringify(property.value),
-      });
-    }
-  }
-
   static async getApplicationProperties(properties: string[]) {
     return await invoke('getAppProperties', {
       properties,
