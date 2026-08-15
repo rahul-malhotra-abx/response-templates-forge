@@ -89,7 +89,7 @@ export class TicketResponseComponent implements OnInit {
     // CODE OPTIMIZATION (Repeated code/function)
     const fetchUserRoles = ['SYSTEM_ADMIN', 'ADMINISTER', 'ADMINISTER_PROJECTS', 'EDIT_ISSUES'];
     const responseTemplateAdminRole = ['SYSTEM_ADMIN', 'ADMINISTER', 'ADMINISTER_PROJECTS'];
-    const userPermissions = await JiraService.getUserPermissions(fetchUserRoles);
+    const userPermissions = await JiraService.getUserPermissions(fetchUserRoles, this.projectIdOrKey);
     if (UtilsService.hasOneOfPermission(responseTemplateAdminRole, userPermissions)) {
       this.isAdmin = true;
     }
@@ -365,7 +365,13 @@ export class TicketResponseComponent implements OnInit {
             this.templates.push(result);
             this.filterList('IGNORE_EVENT', 'All');
           }
-          await this.personalTemplateStorageService.save(currentTemplates);
+          try {
+            await this.personalTemplateStorageService.save(currentTemplates);
+          } catch (e) {
+            // StorageService has already explained the failure; nothing was stored.
+            this.isSavingTemplate = false;
+            return;
+          }
           JiraService.showFlag({
             title: 'Success',
             close: 'auto',
@@ -394,7 +400,12 @@ export class TicketResponseComponent implements OnInit {
             this.templates.push(result);
             this.filterList('IGNORE_EVENT', 'All');
           }
-          await this.projectTemplateStorageService.save(currentTemplates);
+          try {
+            await this.projectTemplateStorageService.save(currentTemplates);
+          } catch (e) {
+            this.isSavingTemplate = false;
+            return;
+          }
           JiraService.showFlag({
             title: 'Success',
             close: 'auto',

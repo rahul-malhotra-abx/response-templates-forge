@@ -38,16 +38,30 @@ export class StorageService {
       };
       propertiesArray.push(property);
     }
-    if (this.storageContext === StorageContext.PROJECT) {
-      await JiraService.saveProjectProperties(this.referenceKey, propertiesArray);
-    } else if (this.storageContext === StorageContext.USER) {
-      await JiraService.saveUserProperties(this.referenceKey, propertiesArray);
-    } else if (this.storageContext === StorageContext.TICKET) {
-      await JiraService.saveTicketProperties(this.referenceKey, propertiesArray);
-    } else if (this.storageContext === StorageContext.DASHBOARD) {
-      await JiraService.saveDashboardProperties(this.referenceKey, this.itemKey, propertiesArray);
-    } else if (this.storageContext === StorageContext.APPLICATION) {
-      await JiraService.saveApplicationProperties(propertiesArray);
+    try {
+      if (this.storageContext === StorageContext.PROJECT) {
+        await JiraService.saveProjectProperties(this.referenceKey, propertiesArray);
+      } else if (this.storageContext === StorageContext.USER) {
+        await JiraService.saveUserProperties(this.referenceKey, propertiesArray);
+      } else if (this.storageContext === StorageContext.TICKET) {
+        await JiraService.saveTicketProperties(this.referenceKey, propertiesArray);
+      } else if (this.storageContext === StorageContext.DASHBOARD) {
+        await JiraService.saveDashboardProperties(this.referenceKey, this.itemKey, propertiesArray);
+      } else if (this.storageContext === StorageContext.APPLICATION) {
+        await JiraService.saveApplicationProperties(propertiesArray);
+      }
+    } catch (e) {
+      // Writes now run as the user, so Jira itself rejects anyone without rights on the target.
+      // Say so plainly instead of letting a bare API error surface.
+      const message = `${e?.['message'] || e}`;
+      JiraService.showFlag({
+        title: 'Save failed',
+        body: /\b40[13]\b|administrator rights/i.test(message)
+          ? 'You do not have permission to change these templates. Project templates need project administrator rights.'
+          : 'Could not save your changes. Please try again.',
+        type: 'error',
+      });
+      throw e;
     }
   }
 

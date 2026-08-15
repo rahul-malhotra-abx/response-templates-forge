@@ -6,7 +6,7 @@ import { invoke, requestJira, showFlag as forgeShowFlag } from '@forge/bridge';
 
 export class JiraService {
   static cache: any = {
-    userPermissions: undefined,
+    userPermissions: {},
   };
 
   static async request(data: any): Promise<any> {
@@ -342,15 +342,22 @@ export class JiraService {
     }
   }
 
-  static async getUserPermissions(permissions: string[]) {
-    if (this.cache.userPermissions) {
-      return this.cache.userPermissions;
+  /**
+   * `projectIdOrKey` matters: project permissions such as ADMINISTER_PROJECTS mean nothing without a
+   * project to evaluate against. The cache is keyed on it, and on the permission list — the single
+   * slot it used before handed the first answer to every later caller.
+   */
+  static async getUserPermissions(permissions: string[], projectIdOrKey?: string) {
+    const cacheKey = `${projectIdOrKey || 'global'}|${[...permissions].sort().join(',')}`;
+    if (this.cache.userPermissions[cacheKey]) {
+      return this.cache.userPermissions[cacheKey];
     }
 
     const userPermissions = await invoke('getUserPermissions', {
       permissions,
+      projectIdOrKey,
     });
-    this.cache.userPermissions = userPermissions;
+    this.cache.userPermissions[cacheKey] = userPermissions;
     return userPermissions;
   }
 }

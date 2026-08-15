@@ -91,7 +91,14 @@ export class AppTemplatesComponent implements OnInit {
         } else {
           this.templates.push(result);
         }
-        await this.templateStorageService.save(this.templates);
+        try {
+          await this.templateStorageService.save(this.templates);
+        } catch (e) {
+          // Global templates are app-owned, so the resolver checks admin rights itself. Re-read to
+          // drop the change the UI already applied.
+          this.templates = ((await this.templateStorageService.get()) || []) as Template[];
+          return;
+        }
         this.templates = this.templates.sort(UtilsService.dynamicSort('name'));
         AnalyticalService.sendEvent(matchedIndex > -1 ? ANALYTICAL_EVENTS.EDIT_ITEM : ANALYTICAL_EVENTS.ADD_ITEM, 'global.templates', {
           item_name: result.name,
@@ -106,7 +113,12 @@ export class AppTemplatesComponent implements OnInit {
   async deleteTemplate(index) {
     if (await confirm('Are you sure?')) {
       const templateToBeDelete: Template = this.templates.splice(index, 1)[0] as Template;
-      await this.templateStorageService.save(this.templates);
+      try {
+        await this.templateStorageService.save(this.templates);
+      } catch (e) {
+        this.templates = ((await this.templateStorageService.get()) || []) as Template[];
+        return;
+      }
       this.toastr.success(`${templateToBeDelete.name} deleted successfully`, `Success`);
       AnalyticalService.sendEvent(ANALYTICAL_EVENTS.DELETE_ITEM, 'global.templates', {});
       AnalyticalService.sendEvent(ANALYTICAL_EVENTS.VIEW_ITEM_LIST, 'global.templates', { item_count: this.templates.length });

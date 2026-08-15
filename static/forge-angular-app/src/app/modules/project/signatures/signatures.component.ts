@@ -47,7 +47,7 @@ export class SignaturesComponent implements OnInit {
 
       const fetchUserRoles = ['SYSTEM_ADMIN', 'ADMINISTER', 'ADMINISTER_PROJECTS', 'EDIT_ISSUES'];
       const responseTemplateAdminRole = ['SYSTEM_ADMIN', 'ADMINISTER', 'ADMINISTER_PROJECTS'];
-      const userPermissions = await JiraService.getUserPermissions(fetchUserRoles);
+      const userPermissions = await JiraService.getUserPermissions(fetchUserRoles, this.projectIdOrKey);
       if (UtilsService.hasOneOfPermission(responseTemplateAdminRole, userPermissions)) {
         this.isAdmin = true;
       }

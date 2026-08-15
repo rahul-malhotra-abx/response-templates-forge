@@ -60,7 +60,7 @@ export class TemplatesComponent implements OnInit {
 
       const fetchUserRoles = ['SYSTEM_ADMIN', 'ADMINISTER', 'ADMINISTER_PROJECTS', 'EDIT_ISSUES'];
       const responseTemplateAdminRole = ['SYSTEM_ADMIN', 'ADMINISTER', 'ADMINISTER_PROJECTS'];
-      const userPermissions = await JiraService.getUserPermissions(fetchUserRoles);
+      const userPermissions = await JiraService.getUserPermissions(fetchUserRoles, this.projectIdOrKey);
       if (UtilsService.hasOneOfPermission(responseTemplateAdminRole, userPermissions)) {
         this.isAdmin = true;
       }
@@ -90,13 +90,14 @@ export class TemplatesComponent implements OnInit {
     return ((await storageService?.get()) || []) as Template[];
   }
 
+  /** Stores first, then adopts the list — a rejected write must not leave the table showing it. */
   private async saveTemplatesForScope(scope: string, templates: Template[]) {
     if (scope === TemplateScopes.PERSONAL) {
-      this.personalTemplates = templates;
       await this.personalTemplateStorageService.save(templates);
+      this.personalTemplates = templates;
     } else {
-      this.projectTemplates = templates;
       await this.projectTemplateStorageService.save(templates);
+      this.projectTemplates = templates;
     }
     this.refreshAllTemplates();
   }
@@ -129,7 +130,11 @@ export class TemplatesComponent implements OnInit {
           templateCopy.name = `${templateCopy.name} (Imported)`;
           currentTemplates.push(templateCopy);
         }
-        await this.saveTemplatesForScope(TemplateScopes.PROJECT, currentTemplates);
+        try {
+          await this.saveTemplatesForScope(TemplateScopes.PROJECT, currentTemplates);
+        } catch (e) {
+          return;
+        }
         AnalyticalService.sendEvent(ANALYTICAL_EVENTS.IMPORT_ITEM, 'project.templates', {});
       }
     });
@@ -191,7 +196,13 @@ export class TemplatesComponent implements OnInit {
         } else {
           currentTemplates.push(result);
         }
-        await this.saveTemplatesForScope(result.scope, currentTemplates);
+
+        try {
+          await this.saveTemplatesForScope(result.scope, currentTemplates);
+        } catch (e) {
+          // StorageService has already told the user why; nothing was stored, so stop here.
+          return;
+        }
 
         const analyticsScope = result.scope === TemplateScopes.PERSONAL ? 'personal.templates' : 'project.templates';
         AnalyticalService.sendEvent(matchedIndex > -1 ? ANALYTICAL_EVENTS.EDIT_ITEM : ANALYTICAL_EVENTS.ADD_ITEM, analyticsScope, {
@@ -219,7 +230,13 @@ export class TemplatesComponent implements OnInit {
     if (matchedTemplate) {
       matchedTemplate.starred = template.starred;
     }
-    await this.saveTemplatesForScope(template.scope, currentTemplates);
+
+    try {
+      await this.saveTemplatesForScope(template.scope, currentTemplates);
+    } catch (e) {
+      template.starred = !template.starred;
+      return;
+    }
 
     AnalyticalService.sendEvent(
       ANALYTICAL_EVENTS.EDIT_ITEM,
@@ -241,7 +258,12 @@ export class TemplatesComponent implements OnInit {
       const currentTemplates = await this.loadTemplatesForScope(template.scope);
       const index = currentTemplates.findIndex((t) => t.id === template.id);
       const templateToBeDelete: Template = index > -1 ? (currentTemplates.splice(index, 1)[0] as Template) : template;
-      await this.saveTemplatesForScope(template.scope, currentTemplates);
+
+      try {
+        await this.saveTemplatesForScope(template.scope, currentTemplates);
+      } catch (e) {
+        return;
+      }
       this.toastr.success(`${templateToBeDelete.name} deleted successfully`, `Success`);
 
       const analyticsScope = template.scope === TemplateScopes.PERSONAL ? 'personal.templates' : 'project.templates';

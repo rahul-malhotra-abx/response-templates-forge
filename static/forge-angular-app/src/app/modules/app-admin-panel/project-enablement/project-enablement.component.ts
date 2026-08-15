@@ -43,7 +43,17 @@ export class ProjectEnablementComponent implements OnInit, OnDestroy {
   async updateStatus(project: any) {
     // Takes the project itself: the row index comes from the search-filtered list, so it pointed
     // at the wrong entry of `projects` whenever a search was active.
-    await JiraService.saveProjectSettings(project.adminSettings, project.id);
+    try {
+      await JiraService.saveProjectSettings(project.adminSettings, project.id);
+    } catch (e) {
+      // The write runs as the signed-in user now, so put the checkbox back if Jira refused it.
+      project.adminSettings.responseTemplatesEnabled = !project.adminSettings.responseTemplatesEnabled;
+      JiraService.showFlag({
+        title: 'Save failed',
+        body: `Could not update ${project.name}. Jira administrator rights are required.`,
+        type: 'error',
+      });
+    }
   }
 
   ngOnDestroy() {

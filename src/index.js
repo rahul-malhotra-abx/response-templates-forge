@@ -170,10 +170,25 @@ resolver.define("getUserPermissions", async ({ payload }) => {
   const permissions = Array.isArray(payload?.permissions)
     ? payload.permissions
     : [];
+  const projectIdOrKey = payload?.projectIdOrKey;
+
+  const queryParams = new URLSearchParams({
+    permissions: permissions.join(","),
+  });
+  // Project permissions such as ADMINISTER_PROJECTS cannot be evaluated without a project to
+  // evaluate them against; without this, administering any one project read as admin everywhere.
+  if (projectIdOrKey) {
+    const isNumericId = /^\d+$/.test(`${projectIdOrKey}`);
+    queryParams.append(
+      isNumericId ? "projectId" : "projectKey",
+      `${projectIdOrKey}`,
+    );
+  }
+
   const response = await api
     .asUser()
     .requestJira(
-      route`/rest/api/3/mypermissions?permissions=${permissions.join(",")}`,
+      assumeTrustedRoute(`/rest/api/3/mypermissions?${queryParams.toString()}`),
     );
   return await parseJsonResponse(response);
 });
@@ -183,7 +198,7 @@ resolver.define("getProjectSettings", async ({ payload }) => {
   const storageKey = payload?.storageKey;
 
   const response = await api
-    .asApp()
+    .asUser()
     .requestJira(
       route`/rest/api/3/project/${projectIdOrKey}/properties/${storageKey}`,
     );
@@ -202,7 +217,7 @@ resolver.define("saveProjectSettings", async ({ payload }) => {
   const projectSettings = payload?.projectSettings;
 
   const response = await api
-    .asApp()
+    .asUser()
     .requestJira(
       route`/rest/api/3/project/${projectIdOrKey}/properties/${storageKey}`,
       {
@@ -234,7 +249,7 @@ resolver.define("getAllProjects", async ({ payload }) => {
   }
 
   const response = await api
-    .asApp()
+    .asUser()
     .requestJira(
       assumeTrustedRoute(
         `/rest/api/3/project/search?${queryParams.toString()}`,
@@ -263,17 +278,18 @@ resolver.define("jiraRequest", async ({ payload, context }) => {
       ? originalUrl.replace("/rest/api/3/search", "/rest/api/3/search/jql")
       : originalUrl;
 
-  const allowedPrefixes = ["/rest/api/3/", "/rest/forge/1/app/"];
+  // App property routes are deliberately absent: they have dedicated resolvers because the app's
+  // own property store has no user context to act in.
+  const allowedPrefixes = ["/rest/api/3/"];
   const isAllowed = allowedPrefixes.some((prefix) => url.startsWith(prefix));
   if (!isAllowed) {
     throw new Error(`Unsupported Jira path: ${url}`);
   }
 
-  const shouldUseUserContext =
-    url.startsWith("/rest/api/3/user/") || url.startsWith("/rest/api/3/my");
-  const requestClient = shouldUseUserContext ? api.asUser() : api.asApp();
+  // Always the user: acting as the app let a caller read any issue or project it named, whether or
+  // not the person driving the UI could see it.
   const trustedRoute = assumeTrustedRoute(url);
-  const response = await requestClient.requestJira(trustedRoute, {
+  const response = await api.asUser().requestJira(trustedRoute, {
     method,
     headers: {
       "Content-Type": contentType,
@@ -299,7 +315,7 @@ resolver.define("getProjectProperties", async ({ payload }) => {
   for (let i = 0; i < properties.length; i += 5) {
     const chunk = properties.slice(i, i + 5);
     const response = await api
-      .asApp()
+      .asUser()
       .requestJira(
         route`/rest/api/3/project/${projectIdOrKey}?properties=${chunk.join(",")}`,
       );
@@ -319,7 +335,7 @@ resolver.define("saveProjectProperties", async ({ payload }) => {
 
   for (const property of properties) {
     const response = await api
-      .asApp()
+      .asUser()
       .requestJira(
         route`/rest/api/3/project/${projectIdOrKey}/properties/${property.key}`,
         {
@@ -344,7 +360,7 @@ resolver.define("getIssueProperties", async ({ payload }) => {
   for (let i = 0; i < properties.length; i += 5) {
     const chunk = properties.slice(i, i + 5);
     const response = await api
-      .asApp()
+      .asUser()
       .requestJira(
         route`/rest/api/3/issue/${issueIdOrKey}?properties=${chunk.join(",")}`,
       );
@@ -364,7 +380,7 @@ resolver.define("saveIssueProperties", async ({ payload }) => {
 
   for (const property of properties) {
     const response = await api
-      .asApp()
+      .asUser()
       .requestJira(
         route`/rest/api/3/issue/${issueIdOrKey}/properties/${property.key}`,
         {
@@ -427,6 +443,26 @@ resolver.define("saveUserProperties", async ({ payload }) => {
   return { ok: true };
 });
 
+/**
+ * Global templates live in the app's own property store, which has no user context to act in, so
+ * `asApp()` is unavoidable for those writes and Jira cannot police them. This stands in for that:
+ * the adminPage module being admin-only is a UI gate, not an authorization check.
+ */
+async function assertJiraAdmin(operation) {
+  const response = await api
+    .asUser()
+    .requestJira(
+      assumeTrustedRoute("/rest/api/3/mypermissions?permissions=ADMINISTER"),
+    );
+  const data = await parseJsonResponse(response, { operation });
+
+  if (!data?.permissions?.ADMINISTER?.havePermission) {
+    throw new Error(
+      "Jira administrator rights are required to change global templates.",
+    );
+  }
+}
+
 async function saveForgeAppProperties(properties) {
   for (const property of properties) {
     const response = await api
@@ -487,6 +523,7 @@ resolver.define("saveAppProperties", async ({ payload }) => {
     ? payload.properties
     : [];
 
+  await assertJiraAdmin("saveAppProperties");
   await saveForgeAppProperties(properties);
 
   return { ok: true };
@@ -497,6 +534,8 @@ resolver.define("probeAppPropertyMigration", async ({ payload }) => {
     ? payload.properties
     : [];
   const addonKey = payload?.addonKey || "com.appbox.ai.response.templates";
+
+  await assertJiraAdmin("probeAppPropertyMigration");
 
   const results = [];
 
