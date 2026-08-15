@@ -54,7 +54,6 @@ export class AppComponent implements OnInit {
         }
         break;
       case 'response-templates-issue-panel':
-      case 'response-templates-issue-action':
         await this.router.navigate(['/ticket/response']);
         break;
       case 'response-templates-admin': {
@@ -69,7 +68,6 @@ export class AppComponent implements OnInit {
             }
             break;
           case 'jira:issuePanel':
-          case 'jira:issueAction':
             await this.router.navigate(['/ticket/response']);
             break;
           case 'jira:adminPage': {
