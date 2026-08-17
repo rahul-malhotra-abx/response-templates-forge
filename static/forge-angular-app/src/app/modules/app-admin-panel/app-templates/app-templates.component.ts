@@ -13,7 +13,6 @@ import { v4 as uuidv4 } from 'uuid';
 import { alert, confirm } from 'basic-modals';
 import { ENVIRONMENT } from '../../../environment';
 import { UtilsService } from 'src/app/services/utils.service';
-import { AnalyticalService, ANALYTICAL_EVENTS } from 'src/app/services/analytical.service';
 
 @Component({
   selector: 'app-app-templates',
@@ -35,10 +34,6 @@ export class AppTemplatesComponent implements OnInit {
     this.templates = this.templates.sort(UtilsService.dynamicSort('name'));
     this.currentUser = await JiraService.getCurrentJiraUser();
     this.pageLoaded = true;
-    AnalyticalService.sendEvent(ANALYTICAL_EVENTS.VIEW_ITEM_LIST, 'global.templates', {
-      item_count: this.templates.length,
-      favorite_count: this.templates.filter((t) => t.starred).length,
-    });
   }
 
   static canAddMoreTemplates(templates: Template[]) {
@@ -100,12 +95,6 @@ export class AppTemplatesComponent implements OnInit {
           return;
         }
         this.templates = this.templates.sort(UtilsService.dynamicSort('name'));
-        AnalyticalService.sendEvent(matchedIndex > -1 ? ANALYTICAL_EVENTS.EDIT_ITEM : ANALYTICAL_EVENTS.ADD_ITEM, 'global.templates', {
-          item_name: result.name,
-          starred: result.starred,
-          fields_used: UtilsService.templateContainsDollarVariables(result),
-        });
-        AnalyticalService.sendEvent(ANALYTICAL_EVENTS.VIEW_ITEM_LIST, 'global.templates', { item_count: this.templates.length });
       }
     });
   }
@@ -120,19 +109,12 @@ export class AppTemplatesComponent implements OnInit {
         return;
       }
       this.toastr.success(`${templateToBeDelete.name} deleted successfully`, `Success`);
-      AnalyticalService.sendEvent(ANALYTICAL_EVENTS.DELETE_ITEM, 'global.templates', {});
-      AnalyticalService.sendEvent(ANALYTICAL_EVENTS.VIEW_ITEM_LIST, 'global.templates', { item_count: this.templates.length });
     }
   }
 
   async toggleTemplateStar(template: Template) {
     template.starred = !template.starred;
     await this.templateStorageService.save(this.templates);
-    AnalyticalService.sendEvent(ANALYTICAL_EVENTS.EDIT_ITEM, 'global.templates', {
-      item_name: template.name,
-      starred: template.starred,
-      fields_used: UtilsService.templateContainsDollarVariables(template),
-    });
   }
 
   async cloneTemplate(template: Template) {

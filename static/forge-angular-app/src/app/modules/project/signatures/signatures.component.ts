@@ -12,7 +12,6 @@ import { ToastrService } from 'ngx-toastr';
 import { MatDialog } from '@angular/material/dialog';
 import { EditSignatureComponent } from './edit-signature/edit-signature.component';
 import { alert, confirm } from 'basic-modals';
-import { AnalyticalService, ANALYTICAL_EVENTS } from 'src/app/services/analytical.service';
 import { DEFAULT_LIMITS } from '../../../models/default.limits';
 
 @Component({
@@ -51,10 +50,6 @@ export class SignaturesComponent implements OnInit {
       if (UtilsService.hasOneOfPermission(responseTemplateAdminRole, userPermissions)) {
         this.isAdmin = true;
       }
-
-      AnalyticalService.sendEvent(ANALYTICAL_EVENTS.VIEW_ITEM_LIST, 'user.signatures', {
-        item_count: this.signatures.length,
-      });
 
       this.pageLoaded = true;
     });
@@ -100,13 +95,6 @@ export class SignaturesComponent implements OnInit {
           this.signatures.push(result);
         }
         await this.signatureStorageService.save(this.signatures);
-        AnalyticalService.sendEvent(matchedIndex > -1 ? ANALYTICAL_EVENTS.EDIT_ITEM : ANALYTICAL_EVENTS.ADD_ITEM, 'user.signatures', {
-          item_name: result.name,
-          active_signature: result.active,
-        });
-        AnalyticalService.sendEvent(ANALYTICAL_EVENTS.VIEW_ITEM_LIST, 'user.signatures', {
-          item_count: this.signatures.length,
-        });
 
         this.allSignatures = [...this.signatures];
       }
@@ -123,10 +111,6 @@ export class SignaturesComponent implements OnInit {
       });
     }
     await this.signatureStorageService.save(this.signatures);
-    AnalyticalService.sendEvent(ANALYTICAL_EVENTS.EDIT_ITEM, 'user.signatures', {
-      item_name: signature.name,
-      active: signature.active,
-    });
   }
 
   async deleteSignature(signature: SignatureTemplate) {
@@ -135,12 +119,6 @@ export class SignaturesComponent implements OnInit {
       const signatureToBeDelete: SignatureTemplate = this.signatures.splice(index, 1)[0] as SignatureTemplate;
       await this.signatureStorageService.save(this.signatures);
       this.toastr.success(`${signatureToBeDelete.name} deleted successfully`, `Success`);
-      AnalyticalService.sendEvent(ANALYTICAL_EVENTS.DELETE_ITEM, 'user.signatures', {
-        item_name: signature.name,
-      });
-      AnalyticalService.sendEvent(ANALYTICAL_EVENTS.VIEW_ITEM_LIST, 'user.signatures', {
-        item_count: this.signatures.length,
-      });
       this.allSignatures = [...this.signatures];
     }
   }

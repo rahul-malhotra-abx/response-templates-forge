@@ -12,10 +12,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { ToastrService } from 'ngx-toastr';
 import { MatDialog } from '@angular/material/dialog';
 import { EditTemplateComponent } from './edit-template/edit-template.component';
-import { alert, confirm } from 'basic-modals';
-import { ENVIRONMENT } from '../../../environment';
+import { confirm } from 'basic-modals';
 import { ImportTemplateComponent } from './import-template/import-template.component';
-import { AnalyticalService, ANALYTICAL_EVENTS } from 'src/app/services/analytical.service';
 
 @Component({
   selector: 'app-templates',
@@ -65,18 +63,7 @@ export class TemplatesComponent implements OnInit {
         this.isAdmin = true;
       }
 
-      AnalyticalService.sendEvent(ANALYTICAL_EVENTS.VIEW_ITEM_LIST, 'project.templates', {
-        item_count: this.projectTemplates.length,
-        favorite_count: this.projectTemplates.filter((t) => t.starred).length,
-        project_id_or_key: this.projectIdOrKey,
-      });
-      AnalyticalService.sendEvent(ANALYTICAL_EVENTS.VIEW_ITEM_LIST, 'personal.templates', {
-        item_count: this.personalTemplates.length,
-        favorite_count: this.personalTemplates.filter((t) => t.starred).length,
-      });
-
       this.pageLoaded = true;
-      AnalyticalService.sendInstanceDetailsEvent();
     });
   }
 
@@ -135,7 +122,6 @@ export class TemplatesComponent implements OnInit {
         } catch (e) {
           return;
         }
-        AnalyticalService.sendEvent(ANALYTICAL_EVENTS.IMPORT_ITEM, 'project.templates', {});
       }
     });
   }
@@ -203,18 +189,6 @@ export class TemplatesComponent implements OnInit {
           // StorageService has already told the user why; nothing was stored, so stop here.
           return;
         }
-
-        const analyticsScope = result.scope === TemplateScopes.PERSONAL ? 'personal.templates' : 'project.templates';
-        AnalyticalService.sendEvent(matchedIndex > -1 ? ANALYTICAL_EVENTS.EDIT_ITEM : ANALYTICAL_EVENTS.ADD_ITEM, analyticsScope, {
-          item_name: result.name,
-          starred: result.starred,
-          fields_used: UtilsService.templateContainsDollarVariables(result),
-        });
-        AnalyticalService.sendEvent(ANALYTICAL_EVENTS.VIEW_ITEM_LIST, analyticsScope, {
-          item_count: currentTemplates.length,
-          favorite_count: currentTemplates.filter((t) => t.starred).length,
-          ...(result.scope === TemplateScopes.PROJECT ? { project_id_or_key: this.projectIdOrKey } : {}),
-        });
       }
     });
   }
@@ -238,15 +212,6 @@ export class TemplatesComponent implements OnInit {
       return;
     }
 
-    AnalyticalService.sendEvent(
-      ANALYTICAL_EVENTS.EDIT_ITEM,
-      template.scope === TemplateScopes.PERSONAL ? 'personal.templates' : 'project.templates',
-      {
-        item_name: template.name,
-        starred: template.starred,
-        fields_used: UtilsService.templateContainsDollarVariables(template),
-      },
-    );
   }
 
   async deleteTemplate(template: Template) {
@@ -265,18 +230,6 @@ export class TemplatesComponent implements OnInit {
         return;
       }
       this.toastr.success(`${templateToBeDelete.name} deleted successfully`, `Success`);
-
-      const analyticsScope = template.scope === TemplateScopes.PERSONAL ? 'personal.templates' : 'project.templates';
-      AnalyticalService.sendEvent(ANALYTICAL_EVENTS.DELETE_ITEM, analyticsScope, {
-        item_name: template.name,
-        starred: template.starred,
-        fields_used: UtilsService.templateContainsDollarVariables(template),
-      });
-      AnalyticalService.sendEvent(ANALYTICAL_EVENTS.VIEW_ITEM_LIST, analyticsScope, {
-        item_count: currentTemplates.length,
-        favorite_count: currentTemplates.filter((t) => t.starred).length,
-        ...(template.scope === TemplateScopes.PROJECT ? { project_id_or_key: this.projectIdOrKey } : {}),
-      });
     }
   }
 

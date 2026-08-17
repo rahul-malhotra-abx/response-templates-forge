@@ -44,28 +44,6 @@ modules:
               propertyKey: com.appbox.ai.response.templates_project-admin-settings
               objectName: responseTemplatesEnabled
               value: "true"
-  jira:issueAction:
-    - key: response-templates-issue-action
-      resource: main
-      resolver:
-        function: resolver
-      title: Add Response
-      icon: https://response-templates.appbox.ai/assets/images/response-template-dark.svg
-      displayConditions:
-        or:
-          not:
-            entityPropertyExists:
-              entity: project
-              propertyKey: com.appbox.ai.response.templates_project-admin-settings
-          and:
-            entityPropertyExists:
-              entity: project
-              propertyKey: com.appbox.ai.response.templates_project-admin-settings
-            entityPropertyEqualTo:
-              entity: project
-              propertyKey: com.appbox.ai.response.templates_project-admin-settings
-              objectName: responseTemplatesEnabled
-              value: "true"
   jira:adminPage:
     - key: response-templates-admin
       resource: main
@@ -94,7 +72,8 @@ permissions:
   scopes:
     - read:jira-work
     - write:jira-work
-    - manage:jira-project
+    - read:project.property:jira
+    - write:project.property:jira
     - read:jira-user
     - read:avatar:jira
   content:

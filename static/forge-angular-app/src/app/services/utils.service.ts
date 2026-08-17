@@ -16,8 +16,11 @@ export class UtilsService {
       return obj;
     }, {});
     let stringData = '';
+    // Sorted by chunk number, not as text. A plain sort orders `_10` before `_2`, so anything past
+    // ten chunks was reassembled out of order and failed to parse.
+    const chunkIndex = (key: string) => Number(key.slice(key.lastIndexOf('_') + 1));
     const orderedProperties = Object.keys(normalizedProperties)
-      .sort()
+      .sort((a, b) => chunkIndex(a) - chunkIndex(b))
       .reduce((obj, key) => {
         obj[key] = normalizedProperties[key];
         return obj;
@@ -62,9 +65,6 @@ export class UtilsService {
     } catch (e) {}
     if (this.getParameterByName('xdm_e')) {
       return decodeURIComponent(this.getParameterByName('xdm_e'));
-    }
-    if (window['AP'] && window['AP']._hostOrigin && window['AP']._hostOrigin !== '*') {
-      domain = window['AP']._hostOrigin;
     }
     return domain;
   }

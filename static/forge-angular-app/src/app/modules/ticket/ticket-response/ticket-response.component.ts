@@ -14,7 +14,6 @@ import { DomSanitizer } from '@angular/platform-browser';
 import { FrameWrapper } from '../../../models/frame.wrapper';
 import { v4 as uuidv4 } from 'uuid';
 import { UtilsService } from '../../../services/utils.service';
-import { AnalyticalService, ANALYTICAL_EVENTS } from 'src/app/services/analytical.service';
 import { MatTabChangeEvent } from '@angular/material/tabs';
 import { MatDialog } from '@angular/material/dialog';
 import { EditTemplateComponent } from '../../project/templates/edit-template/edit-template.component';
@@ -379,15 +378,6 @@ export class TicketResponseComponent implements OnInit {
             type: 'success',
           });
           this.usedTemplate = UtilsService.deepCopy(result);
-          AnalyticalService.sendEvent(matchedIndex > -1 ? ANALYTICAL_EVENTS.EDIT_ITEM : ANALYTICAL_EVENTS.ADD_ITEM, 'personal.templates', {
-            item_name: result.name,
-            starred: result.starred,
-            fields_used: UtilsService.templateContainsDollarVariables(result),
-          });
-          AnalyticalService.sendEvent(ANALYTICAL_EVENTS.VIEW_ITEM_LIST, 'personal.templates', {
-            item_count: currentTemplates.length,
-            favorite_count: currentTemplates.filter((t) => t.starred).length,
-          });
         } else if (result.scope === TemplateScopes.PROJECT) {
           const currentTemplates = await this.loadTemplatesForScope(TemplateScopes.PROJECT);
           matchedIndex = currentTemplates.findIndex((t) => t.id === result.id);
@@ -413,16 +403,6 @@ export class TicketResponseComponent implements OnInit {
             type: 'success',
           });
           this.usedTemplate = UtilsService.deepCopy(result);
-          AnalyticalService.sendEvent(matchedIndex > -1 ? ANALYTICAL_EVENTS.EDIT_ITEM : ANALYTICAL_EVENTS.ADD_ITEM, 'project.templates', {
-            item_name: result.name,
-            starred: result.starred,
-            fields_used: UtilsService.templateContainsDollarVariables(result),
-          });
-          AnalyticalService.sendEvent(ANALYTICAL_EVENTS.VIEW_ITEM_LIST, 'project.templates', {
-            item_count: currentTemplates.length,
-            favorite_count: currentTemplates.filter((t) => t.starred).length,
-            project_id_or_key: this.projectIdOrKey,
-          });
         }
       }
       this.isSavingTemplate = false;
@@ -470,8 +450,12 @@ export class TicketResponseComponent implements OnInit {
       body: updateDescription ? 'Description updated successfully' : 'Comment posted successfully',
       type: 'success',
     });
-    AnalyticalService.sendEvent(ANALYTICAL_EVENTS.SAVE_ITEM, 'ticket.view', { save_type: ` ${internalComment ? 'internal' : 'external'} comment` });
     await this.saveRecentTemplates([...this.multipleUsedTemplates]);
+    // Connect reloaded the whole issue page here, which reset the panel as a side effect. Refreshing
+    // the issue view in place does not, so the composer is cleared explicitly — otherwise the text
+    // sits there after it has already been posted, and looks unsent.
+    this.usedTemplate = undefined;
+    await this.cancelEditing();
     JiraService.refreshIssuePage();
   }
 
@@ -541,7 +525,6 @@ export class TicketResponseComponent implements OnInit {
       placeholder: 'Add a comment',
       value: '',
     });
-    AnalyticalService.sendEvent(ANALYTICAL_EVENTS.CANCEL_ITEM, 'ticket.view', {});
   }
 
   isSaveDisabled() {

@@ -2,7 +2,7 @@ import { JiraUserModel } from '../models/jira.user.model';
 import { UtilsService } from './utils.service';
 import { ENVIRONMENT } from '../environment';
 import { DataStorageKeys } from '../models/data.storage.keys.model';
-import { invoke, requestJira, showFlag as forgeShowFlag } from '@forge/bridge';
+import { invoke, requestJira, showFlag as forgeShowFlag, view } from '@forge/bridge';
 
 export class JiraService {
   static cache: any = {
@@ -165,8 +165,13 @@ export class JiraService {
     });
   }
 
+  /**
+   * Connect's `AP.jira.refreshIssuePage()`. Updates the issue view in place so a comment the app
+   * just posted appears without the user reloading. Not every module view can refresh — the issue
+   * action modal cannot — and the comment is posted either way, so a refusal is not worth surfacing.
+   */
   static refreshIssuePage() {
-    return;
+    view.refresh().catch(() => undefined);
   }
 
   static async checkIssuesAgainstJQLs(issueIds: any[], JQLs: string[]) {
@@ -186,37 +191,6 @@ export class JiraService {
 
   static resize(width: any, height: any) {
     return;
-  }
-
-  static async getDashboardProperties(dashboardId: string, dashboardItemId: string, property: string) {
-    const response = await this.request({
-      url: `/rest/api/3/dashboard/${dashboardId}/items/${dashboardItemId}/properties/`,
-      type: 'GET',
-      contentType: 'application/json',
-    });
-    let keyIndex = response.keys.findIndex((k: { key: string }) => k.key === property);
-    if (keyIndex > -1) {
-      const propertyResponse = await this.request({
-        url: `/rest/api/3/dashboard/${dashboardId}/items/${dashboardItemId}/properties/${property}`,
-        type: 'GET',
-        contentType: 'application/json',
-      });
-      const returnObj: { [key: string]: any } = {};
-      returnObj[propertyResponse.key] = propertyResponse.value;
-      return propertyResponse?.value ? returnObj : {};
-    }
-    return {};
-  }
-
-  static async saveDashboardProperties(dashboardId: string, dashboardItemId: string, properties: any[]) {
-    for (const property of properties) {
-      await this.request({
-        url: `/rest/api/3/dashboard/${dashboardId}/items/${dashboardItemId}/properties/${property.key}`,
-        type: 'PUT',
-        contentType: 'application/json',
-        data: JSON.stringify(property.value),
-      });
-    }
   }
 
   static async getApplicationProperties(properties: string[]) {
