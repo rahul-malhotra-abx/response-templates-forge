@@ -4,7 +4,7 @@
   "private": true,
   "description": "The Atlaskit comment editor, ported from appbox-ai/reactembed @ 1fd4209 and served from this app's own static resources so the app declares no egress.",
   "scripts": {
-    "build": "esbuild src/index.tsx --bundle --minify --target=es2018 --define:process.env.NODE_ENV=\\\"production\\\" --loader:.svg=dataurl --loader:.png=dataurl --loader:.gif=dataurl --outfile=../static/forge-angular-app/src/assets/editor/static/js/main.js && cp public/index.html ../static/forge-angular-app/src/assets/editor/index.html"
+    "build": "esbuild src/index.tsx --bundle --minify --target=es2018 --define:process.env.NODE_ENV=\\\"production\\\" --define:global=globalThis --inject:src/node-shims.js --loader:.svg=dataurl --loader:.png=dataurl --loader:.gif=dataurl --outfile=../static/forge-angular-app/src/assets/editor/static/js/main.js && cp public/index.html ../static/forge-angular-app/src/assets/editor/index.html"
   },
   "comments": {
     "dependencies": [
@@ -25,8 +25,10 @@
     "@atlaskit/smart-card": "17.7.12",
     "@formatjs/intl": "^2.1.0",
     "assert": "^2.1.0",
+    "buffer": "^6.0.3",
     "events": "^3.3.0",
     "iframe-channel": "^1.2.10",
+    "process": "^0.11.10",
     "react": "16.8.2",
     "react-dom": "16.8.2",
     "react-intl": "2.6.0",
