@@ -6,13 +6,6 @@ export class IframeDataModel extends EventEmitter {
         Object.assign(this.attributes, attributes);
     }
 
-    /* public avatar: any = {name: '', size: 'medium', src: ''};
-     public author: string = '';
-     public content: string[] = [`<p>Content goes here. This can include`, `<a href="/link">links</a>`, `and other content.</p>`];
-     public edited: boolean = false;
-     public commentTime: Date | undefined;
-     public restrictedTo: string = 'Restricted to Admins Only';
-     public actions: any[] = [];*/
 
 
     attributes: any = {};

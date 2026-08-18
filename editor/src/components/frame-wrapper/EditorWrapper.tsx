@@ -2,10 +2,7 @@ import React, { Component, useEffect } from 'react';
 import { Editor, EditorContext, WithEditorActions } from '@atlaskit/editor-core';
 import { IframeDataModel } from '../../services/comment/iframe.data.model';
 import { editorCardProvider } from '@atlaskit/smart-card';
-// The emoji and mention providers are not ported. Both were already commented out at the call
-// site below, `@atlaskit/mention` was never declared as a dependency, and the mention provider
-// pointed at a placeholder external URL — which would be egress, the thing this move exists to
-// remove. Wiring them back up means going through the Forge bridge.
+// Emoji and mention providers are not ported — they need the Forge bridge, not a remote URL.
 
 export class EditorWrapper extends Component<{ dataModel: IframeDataModel }, {}> {
   tick() {

@@ -4,16 +4,11 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Response Templates Editor</title>
-    <!-- Relative on purpose: Forge serves static resources from a hashed CDN path, so absolute
-         asset URLs (create-react-app's default) 404. The Angular build already passes
-         --base-href ./ --deploy-url ./ for the same reason. -->
+    <!-- Relative: Forge serves static resources from a hashed CDN path. -->
     <link rel="stylesheet" href="./static/js/main.css" />
   </head>
   <body>
     <div id="root"></div>
-    <!-- type="module" because the bundle is code-split: Atlaskit already marks its heavy features
-         (media, emoji, syntax highlighting, icons) behind dynamic imports, and splitting honours
-         them so only the entry chunk loads before the editor renders. -->
     <script type="module" src="./static/js/main.js"></script>
   </body>
 </html>

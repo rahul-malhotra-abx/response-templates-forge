@@ -16,8 +16,7 @@ export class UtilsService {
       return obj;
     }, {});
     let stringData = '';
-    // Sorted by chunk number, not as text. A plain sort orders `_10` before `_2`, so anything past
-    // ten chunks was reassembled out of order and failed to parse.
+    // By chunk number, not as text — a plain sort puts `_10` before `_2`.
     const chunkIndex = (key: string) => Number(key.slice(key.lastIndexOf('_') + 1));
     const orderedProperties = Object.keys(normalizedProperties)
       .sort((a, b) => chunkIndex(a) - chunkIndex(b))
@@ -188,10 +187,7 @@ export class UtilsService {
     return false;
   }
 
-  /**
-   * Returns whether the text made it to the clipboard, so callers can confirm to the user. The
-   * textarea fallback is for embedded frames where the async clipboard API is blocked.
-   */
+  /** The textarea fallback is for frames where the async clipboard API is blocked. */
   static async copyTextToClipboard(text: string): Promise<boolean> {
     try {
       await navigator.clipboard.writeText(text);

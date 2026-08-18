@@ -66,11 +66,7 @@ export class TemplatesComponent implements OnInit {
     });
   }
 
-  /**
-   * Templates are re-read from storage before every write. The lists loaded with the page go stale
-   * as soon as anything is created elsewhere (another tab, an issue view, another admin), which let
-   * duplicate names through and made each save overwrite whatever had been added since.
-   */
+  /** Re-read before every write — the lists loaded with the page go stale. */
   private async loadTemplatesForScope(scope: string): Promise<Template[]> {
     const storageService = scope === TemplateScopes.PERSONAL ? this.personalTemplateStorageService : this.projectTemplateStorageService;
     return ((await storageService?.get()) || []) as Template[];
@@ -157,8 +153,6 @@ export class TemplatesComponent implements OnInit {
         projectIdOrKey: this.projectIdOrKey,
         isAdmin: this.isAdmin,
         newTemplate,
-        // Re-checked against storage when OK is pressed, so a template created while this dialog
-        // was open still blocks the name.
         validateName: async (name: string, templateId: string) => {
           const currentTemplates = await this.loadTemplatesForScope(targetScope);
           return TemplatesComponent.isNameTaken(currentTemplates, name, templateId)
@@ -174,8 +168,6 @@ export class TemplatesComponent implements OnInit {
           return;
         }
 
-        // Re-read so the save merges into whatever is in storage now instead of overwriting it
-        // with the list this page started with.
         const currentTemplates = await this.loadTemplatesForScope(result.scope);
         const matchedIndex = currentTemplates.findIndex((t) => t.id === result.id);
         result.updatedAt = new Date();
@@ -190,7 +182,6 @@ export class TemplatesComponent implements OnInit {
         try {
           await this.saveTemplatesForScope(result.scope, currentTemplates);
         } catch (e) {
-          // StorageService has already told the user why; nothing was stored, so stop here.
           return;
         }
         JiraService.showFlag({

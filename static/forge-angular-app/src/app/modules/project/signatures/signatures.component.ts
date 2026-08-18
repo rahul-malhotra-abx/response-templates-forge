@@ -39,7 +39,6 @@ export class SignaturesComponent implements OnInit {
 
       this.signatureStorageService = new StorageService(StorageContext.USER, this.currentUser.accountId, DataStorageKeys.USER_SIGNATURES);
       this.signatures = (await this.signatureStorageService.get()) || ([] as SignatureTemplate[]);
-      // console.log('signatures', this.signatures);
 
       this.allSignatures = [...this.signatures];
 
@@ -55,8 +54,6 @@ export class SignaturesComponent implements OnInit {
   }
 
   openEditSignatureModal(signature: SignatureTemplate): void {
-    // Hiding the Add button was the only thing enforcing the cap, and it used `<=`, so the 11th
-    // signature could still be created.
     if (!signature && this.allSignatures.length >= DEFAULT_LIMITS.USER_SIGNATURES) {
       alert(`Cannot add more than ${DEFAULT_LIMITS.USER_SIGNATURES} signatures.`);
       return;
@@ -96,8 +93,6 @@ export class SignaturesComponent implements OnInit {
         try {
           await this.signatureStorageService.save(this.signatures);
         } catch (e) {
-          // The list was updated before the write. StorageService has already said why it failed,
-          // so re-read rather than leave the table showing a signature that was never stored.
           this.signatures = ((await this.signatureStorageService.get()) || []) as SignatureTemplate[];
           this.allSignatures = [...this.signatures];
           return;
@@ -114,8 +109,7 @@ export class SignaturesComponent implements OnInit {
   }
 
   async toggleActiveSignature(signature: SignatureTemplate) {
-    // Activating one signature deactivates every other, so a rejected write has to restore all of
-    // the flags, not just the one that was clicked.
+    // Activating one deactivates the rest, so a rejected write restores every flag.
     const activeBefore = new Map(this.signatures.map((sign) => [sign.id, sign.active]));
 
     signature.active = !signature.active;
@@ -130,8 +124,6 @@ export class SignaturesComponent implements OnInit {
     try {
       await this.signatureStorageService.save(this.signatures);
     } catch (e) {
-      // StorageService has already said why. `allSignatures` holds the same objects, so putting the
-      // flags back here fixes both views.
       this.signatures.forEach((sign) => (sign.active = activeBefore.get(sign.id)));
     }
   }

@@ -3,12 +3,7 @@ import api, { assumeTrustedRoute, getAppContext, route } from "@forge/api";
 
 const resolver = new Resolver();
 
-/**
- * `context.license` is only populated for a paid app in production, so an absent licence means "not
- * production" far more often than it means "unlicensed" — reading absence as unlicensed would lock
- * every development install out of its own data. Present: trust it, which is also what
- * `forge install --license inactive` produces. Absent: only fatal in production.
- */
+/** `context.license` is only populated for a paid app in production, so absence is only fatal there. */
 function isLicenseActive(license, environmentType) {
   if (license) {
     return license.active !== false;
@@ -17,11 +12,7 @@ function isLicenseActive(license, environmentType) {
   return String(environmentType || "").toUpperCase() !== "PRODUCTION";
 }
 
-/**
- * Unlicensed is read-only rather than shut out: templates stay readable and only writes stop. The
- * modules are already hidden from unlicensed users by Forge itself, so this catches the licence
- * that lapses under someone mid-session.
- */
+/** Read-only rather than shut out — this catches a licence that lapses mid-session. */
 function assertLicensed(context) {
   let environmentType = "";
   try {
@@ -185,8 +176,7 @@ resolver.define("getUserPermissions", async ({ payload }) => {
   const queryParams = new URLSearchParams({
     permissions: permissions.join(","),
   });
-  // Project permissions such as ADMINISTER_PROJECTS cannot be evaluated without a project to
-  // evaluate them against; without this, administering any one project read as admin everywhere.
+  // ADMINISTER_PROJECTS cannot be evaluated without a project to evaluate it against.
   if (projectIdOrKey) {
     const isNumericId = /^\d+$/.test(`${projectIdOrKey}`);
     queryParams.append(
@@ -271,8 +261,7 @@ resolver.define("getAllProjects", async ({ payload }) => {
   return await parseJsonResponse(response);
 });
 
-// Comments and description edits are issued from the UI with @forge/bridge `requestJira`, so
-// Jira attributes them to the logged in user. Posting them here would run as the app instead.
+// Comments and description edits go through the bridge instead, so Jira attributes them to the user.
 
 resolver.define("jiraRequest", async ({ payload, context }) => {
   const originalUrl = payload?.url;
@@ -290,16 +279,14 @@ resolver.define("jiraRequest", async ({ payload, context }) => {
       ? originalUrl.replace("/rest/api/3/search", "/rest/api/3/search/jql")
       : originalUrl;
 
-  // App property routes are deliberately absent: they have dedicated resolvers because the app's
-  // own property store has no user context to act in.
+  // App property routes are absent by design — they have dedicated resolvers.
   const allowedPrefixes = ["/rest/api/3/"];
   const isAllowed = allowedPrefixes.some((prefix) => url.startsWith(prefix));
   if (!isAllowed) {
     throw new Error(`Unsupported Jira path: ${url}`);
   }
 
-  // Always the user: acting as the app let a caller read any issue or project it named, whether or
-  // not the person driving the UI could see it.
+  // Always the user — as the app, a caller could read any issue or project it named.
   const trustedRoute = assumeTrustedRoute(url);
   const response = await api.asUser().requestJira(trustedRoute, {
     method,
@@ -461,11 +448,7 @@ resolver.define("saveUserProperties", async ({ payload, context }) => {
   return { ok: true };
 });
 
-/**
- * Global templates live in the app's own property store, which has no user context to act in, so
- * `asApp()` is unavoidable for those writes and Jira cannot police them. This stands in for that:
- * the adminPage module being admin-only is a UI gate, not an authorization check.
- */
+/** The app property store has no user context, so `asApp()` is unavoidable and Jira cannot police it. */
 async function assertJiraAdmin(operation) {
   const response = await api
     .asUser()
@@ -494,11 +477,7 @@ async function saveForgeAppProperties(properties) {
   }
 }
 
-/**
- * Global templates were written to the Connect add-on property store before the migration, and
- * Forge writes to its own. Never fatal: a legacy store that refuses the request — the Connect key is
- * gone, or was never ours — must leave the caller on Forge data rather than take the screen down.
- */
+/** Pre-migration global templates live in the Connect store. Never fatal — fall back to Forge data. */
 async function readLegacyAppProperty(addonKey, propertyKey) {
   try {
     const response = await api
@@ -548,13 +527,11 @@ resolver.define("getAppProperties", async ({ payload }) => {
     }
   }
 
-  // Copy what the legacy store still holds into the Forge store, so the fallback stops running once
-  // a site has been read through. Idempotent: concurrent readers write the same bytes.
+  // Copy forward so the fallback stops running once a site has been read through.
   if (carriedOver.length > 0) {
     try {
       await saveForgeAppProperties(carriedOver);
     } catch (error) {
-      // The read itself succeeded — the next read simply falls back again.
       console.error("Copying legacy app properties forward failed", {
         message: error?.message,
       });

@@ -47,9 +47,6 @@ export class StorageService {
         await JiraService.saveApplicationProperties(propertiesArray);
       }
     } catch (e) {
-      // Writes now run as the user, so Jira itself rejects anyone without rights on the target, and
-      // the resolver rejects anyone whose licence has lapsed. Say which it was instead of letting a
-      // bare API error surface.
       const message = `${e?.['message'] || e}`;
       let body = 'Could not save your changes. Please try again.';
       if (/licence|license/i.test(message)) {
@@ -77,15 +74,13 @@ export class StorageService {
   }
 
   async get(): Promise<any> {
-    // Every chunk carries `totalSize`, so reading the first one says how many others exist. Asking
-    // blind for a fixed 15 cost a request per key — and for app properties another request against
-    // the legacy Connect store for each of the keys Forge did not hold, which is most of them.
+    // Every chunk carries `totalSize`, so the first read says how many others exist.
     const firstKey = `${this.storageBaseKey}_0`;
     const firstResponse = await this.fetch([firstKey]);
 
     const firstChunk = firstResponse?.[firstKey];
     const parsedFirstChunk = typeof firstChunk === 'string' ? UtilsService.safeParse(firstChunk) : firstChunk;
-    // Capped at the 100 properties an app may hold, so a corrupt `totalSize` cannot spin here.
+    // Capped at the 100 properties an app may hold, in case `totalSize` is corrupt.
     const totalSize = Math.min(parsedFirstChunk?.totalSize || 0, 100);
 
     let propertyArrayResponse = firstResponse;

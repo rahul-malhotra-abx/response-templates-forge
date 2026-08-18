@@ -6,11 +6,7 @@ import { IntlProvider } from 'react-intl-next';
 
 const Channel = require('iframe-channel').default;
 
-/**
- * Ported verbatim from appbox-ai/reactembed @ 1fd4209, which is what jira-editor.appbox.ai serves.
- * The message contract is unchanged, so the Angular side sees the same editor it always has — only
- * the origin moved, from an external host to this app's own static resources.
- */
+// Ported from appbox-ai/reactembed @ 1fd4209.
 class App extends React.Component<any, { dataModel: IframeDataModel }> {
   constructor(props: any) {
     super(props);

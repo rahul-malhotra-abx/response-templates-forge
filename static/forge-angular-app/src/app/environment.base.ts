@@ -8,9 +8,7 @@ const environments = {
     APP_MODE: 'RESPONSE_TEMPLATE_PRO',
     APP_KEY: 'com.appbox.ai.response.templates',
     APP_BASE_KEY: 'com.appbox.ai.response.templates',
-    // Served from the app's own static resources, so the frame is same-origin and the app declares
-    // no egress. Relative because Forge serves the bundle from a hashed CDN path — the Angular
-    // build already passes --base-href ./ --deploy-url ./ for the same reason.
+    // Same-origin, so the app declares no egress.
     EDITOR_APP_BASE_PATH: './assets/editor/index.html',
     EDITOR_IFRAME_CHANNEL: 'iframed.react',
     FREE_VERSION: false,

@@ -23,12 +23,6 @@ export class ProjectComponent implements OnInit {
       requireAdminRole: true,
       icon: 'fa fa-signature',
     },
-    // {
-    //   route: 'settings',
-    //   label: 'Settings',
-    //   requireAdminRole: true,
-    //   icon: 'fa fa-sliders-h'
-    // }
   ];
   activeLink: any;
   projectKey: string | undefined;
