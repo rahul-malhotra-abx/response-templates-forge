@@ -205,13 +205,6 @@ export class JiraService {
     });
   }
 
-  static async probeAppPropertyMigration(properties: string[], addonKey?: string) {
-    return await invoke('probeAppPropertyMigration', {
-      properties,
-      addonKey,
-    });
-  }
-
   static async getProjectSettings(projectIdOrKey: any) {
     return await invoke('getProjectSettings', {
       projectIdOrKey,

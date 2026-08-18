@@ -158,30 +158,6 @@ async function parseAnyResponse(response, metadata = {}) {
   return text;
 }
 
-async function parseResponseWithoutThrow(response) {
-  const text = await response.text();
-  let parsed = null;
-  if (text && text.trim()) {
-    const contentType = response.headers.get("content-type") || "";
-    if (contentType.includes("application/json")) {
-      try {
-        parsed = JSON.parse(text);
-      } catch (_error) {
-        parsed = text;
-      }
-    } else {
-      parsed = text;
-    }
-  }
-
-  return {
-    ok: response.ok,
-    status: response.status,
-    value: parsed?.value,
-    raw: parsed,
-  };
-}
-
 resolver.define("healthCheck", async ({ context }) => {
   return {
     ok: true,
@@ -599,53 +575,6 @@ resolver.define("saveAppProperties", async ({ payload, context }) => {
   await saveForgeAppProperties(properties);
 
   return { ok: true };
-});
-
-resolver.define("probeAppPropertyMigration", async ({ payload }) => {
-  const properties = Array.isArray(payload?.properties)
-    ? payload.properties
-    : [];
-  const addonKey = payload?.addonKey || "com.appbox.ai.response.templates";
-
-  await assertJiraAdmin("probeAppPropertyMigration");
-
-  const results = [];
-
-  for (const propertyKey of properties) {
-    const forgeResponse = await api
-      .asApp()
-      .requestJira(route`/rest/forge/1/app/properties/${propertyKey}`);
-    const forge = await parseResponseWithoutThrow(forgeResponse);
-
-    let legacy;
-    try {
-      const legacyResponse = await api
-        .asApp()
-        .requestJira(
-          route`/rest/atlassian-connect/1/addons/${addonKey}/properties/${propertyKey}`,
-        );
-      legacy = await parseResponseWithoutThrow(legacyResponse);
-    } catch (error) {
-      legacy = {
-        ok: false,
-        status: null,
-        value: null,
-        raw: null,
-        error: error?.message || "Unknown error",
-      };
-    }
-
-    results.push({
-      propertyKey,
-      forge,
-      legacy,
-    });
-  }
-
-  return {
-    addonKey,
-    results,
-  };
 });
 
 export const handler = resolver.getDefinitions();
