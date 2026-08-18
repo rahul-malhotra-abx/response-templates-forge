@@ -16,12 +16,11 @@
     "tunnel:free": "npm run use:free && forge tunnel",
     "lint:paid": "npm run use:paid && forge lint",
     "lint:free": "npm run use:free && forge lint",
-    "editor:install": "cd editor && npm install",
-    "editor:build": "cd editor && npm run build",
+    "editor:build": "cd editor && npm install --no-audit --no-fund && npm run build",
     "ui:install": "cd static/forge-angular-app && npm install --legacy-peer-deps",
-    "ui:build:paid": "cd static/forge-angular-app && NODE_OPTIONS=--openssl-legacy-provider npx ng build --configuration production,paid --base-href ./ --deploy-url ./",
+    "ui:build:paid": "npm run editor:build && cd static/forge-angular-app && NODE_OPTIONS=--openssl-legacy-provider npx ng build --configuration production,paid --base-href ./ --deploy-url ./",
     "ui:build:paid:watch": "cd static/forge-angular-app && NODE_OPTIONS=--openssl-legacy-provider npx ng build --watch --configuration development,paid --base-href ./ --deploy-url ./",
-    "ui:build:free": "cd static/forge-angular-app && NODE_OPTIONS=--openssl-legacy-provider npx ng build --configuration production,free --base-href ./ --deploy-url ./",
+    "ui:build:free": "npm run editor:build && cd static/forge-angular-app && NODE_OPTIONS=--openssl-legacy-provider npx ng build --configuration production,free --base-href ./ --deploy-url ./",
     "ui:build:free:watch": "cd static/forge-angular-app && NODE_OPTIONS=--openssl-legacy-provider npx ng build --watch --configuration development,free --base-href ./ --deploy-url ./"
   },
   "dependencies": {
