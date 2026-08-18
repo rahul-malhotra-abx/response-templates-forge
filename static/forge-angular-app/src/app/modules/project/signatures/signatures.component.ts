@@ -114,6 +114,10 @@ export class SignaturesComponent implements OnInit {
   }
 
   async toggleActiveSignature(signature: SignatureTemplate) {
+    // Activating one signature deactivates every other, so a rejected write has to restore all of
+    // the flags, not just the one that was clicked.
+    const activeBefore = new Map(this.signatures.map((sign) => [sign.id, sign.active]));
+
     signature.active = !signature.active;
     if (signature.active) {
       this.signatures.forEach((sign) => {
@@ -122,7 +126,14 @@ export class SignaturesComponent implements OnInit {
         }
       });
     }
-    await this.signatureStorageService.save(this.signatures);
+
+    try {
+      await this.signatureStorageService.save(this.signatures);
+    } catch (e) {
+      // StorageService has already said why. `allSignatures` holds the same objects, so putting the
+      // flags back here fixes both views.
+      this.signatures.forEach((sign) => (sign.active = activeBefore.get(sign.id)));
+    }
   }
 
   async deleteSignature(signature: SignatureTemplate) {
