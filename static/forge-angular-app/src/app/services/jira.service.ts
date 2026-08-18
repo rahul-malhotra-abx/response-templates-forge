@@ -155,13 +155,25 @@ export class JiraService {
     callback?.({ jql: options?.jql || '' });
   }
 
+  private static flagSequence = 0;
+
+  /**
+   * Jira's own flag, shown in the product chrome rather than inside the app's iframe. Replaces both
+   * Connect's `AP.flag.create` and the ngx-toastr toasts, which rendered into the iframe with no
+   * stylesheet behind them and so were never visible.
+   *
+   * Successes and notices clear themselves after eight seconds; warnings and errors stay until
+   * dismissed, so a failure cannot scroll away unread. Pass `close` to override either way.
+   */
   static showFlag(options: { title: string; close?: string; body: string; type: 'success' | 'info' | 'warning' | 'error' }) {
     forgeShowFlag({
-      id: `rt-${options.type}-${Date.now()}`,
+      // Date.now() alone collides when two flags are raised in the same millisecond, and a repeated
+      // id silently replaces the flag already on screen.
+      id: `rt-${options.type}-${Date.now()}-${(this.flagSequence += 1)}`,
       title: options.title,
       type: options.type,
       description: options.body,
-      isAutoDismiss: options.close === 'auto',
+      isAutoDismiss: options.close ? options.close === 'auto' : options.type === 'success' || options.type === 'info',
     });
   }
 

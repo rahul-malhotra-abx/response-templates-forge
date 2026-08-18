@@ -8,7 +8,6 @@ import { map, startWith } from 'rxjs/operators';
 import { JiraService } from '../../../../services/jira.service';
 import { ALLOWED_JIRA_COLUMN_RENDERERS } from '../../../../models/allowed.jira.column.renderers';
 import { UtilsService } from '../../../../services/utils.service';
-import { ToastrService } from 'ngx-toastr';
 import { ENVIRONMENT } from '../../../../environment';
 import { FrameWrapper } from '../../../../models/frame.wrapper';
 import { DomSanitizer } from '@angular/platform-browser';
@@ -44,7 +43,6 @@ export class EditSignatureComponent implements OnInit {
 
   constructor(
     private sanitizer: DomSanitizer,
-    private toastr: ToastrService,
     private dialogRef: MatDialogRef<EditSignatureComponent>,
     @Inject(MAT_DIALOG_DATA) public dataFromPatent: any
   ) {
@@ -76,9 +74,13 @@ export class EditSignatureComponent implements OnInit {
   async copyToClipBoard(option) {
     const variable = '${' + option.key + '}';
     if (await UtilsService.copyTextToClipboard(variable)) {
-      this.toastr.success(`${variable} copied to clipboard`, 'Copied');
+      JiraService.showFlag({ title: 'Copied', body: `${variable} copied to clipboard.`, type: 'success' });
     } else {
-      this.toastr.error('Could not copy. Select the variable and copy it manually.', 'Copy failed');
+      JiraService.showFlag({
+        title: 'Copy failed',
+        body: 'Could not copy. Select the variable and copy it manually.',
+        type: 'error',
+      });
     }
   }
 

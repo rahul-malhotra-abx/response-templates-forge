@@ -8,7 +8,6 @@ import { DataStorageKeys } from '../../../models/data.storage.keys.model';
 import { ActivatedRoute } from '@angular/router';
 import { JiraService } from '../../../services/jira.service';
 import { v4 as uuidv4 } from 'uuid';
-import { ToastrService } from 'ngx-toastr';
 import { MatDialog } from '@angular/material/dialog';
 import { EditSignatureComponent } from './edit-signature/edit-signature.component';
 import { alert, confirm } from 'basic-modals';
@@ -31,7 +30,7 @@ export class SignaturesComponent implements OnInit {
   signatures: SignatureTemplate[] = [];
   signatureStorageService: StorageService;
 
-  constructor(private toastr: ToastrService, private route: ActivatedRoute, public dialog: MatDialog) {}
+  constructor(private route: ActivatedRoute, public dialog: MatDialog) {}
 
   ngOnInit(): void {
     this.route.parent.params.subscribe(async (params) => {
@@ -94,9 +93,22 @@ export class SignaturesComponent implements OnInit {
         } else {
           this.signatures.push(result);
         }
-        await this.signatureStorageService.save(this.signatures);
+        try {
+          await this.signatureStorageService.save(this.signatures);
+        } catch (e) {
+          // The list was updated before the write. StorageService has already said why it failed,
+          // so re-read rather than leave the table showing a signature that was never stored.
+          this.signatures = ((await this.signatureStorageService.get()) || []) as SignatureTemplate[];
+          this.allSignatures = [...this.signatures];
+          return;
+        }
 
         this.allSignatures = [...this.signatures];
+        JiraService.showFlag({
+          title: matchedIndex > -1 ? 'Updated' : 'Created',
+          body: `Signature "${result.name}" ${matchedIndex > -1 ? 'updated' : 'created'} successfully.`,
+          type: 'success',
+        });
       }
     });
   }
@@ -117,8 +129,18 @@ export class SignaturesComponent implements OnInit {
     if (await confirm('Are you sure?')) {
       const index = this.signatures.findIndex((t) => t.id === signature.id);
       const signatureToBeDelete: SignatureTemplate = this.signatures.splice(index, 1)[0] as SignatureTemplate;
-      await this.signatureStorageService.save(this.signatures);
-      this.toastr.success(`${signatureToBeDelete.name} deleted successfully`, `Success`);
+      try {
+        await this.signatureStorageService.save(this.signatures);
+      } catch (e) {
+        this.signatures.splice(index, 0, signatureToBeDelete);
+        this.allSignatures = [...this.signatures];
+        return;
+      }
+      JiraService.showFlag({
+        title: 'Deleted',
+        body: `Signature "${signatureToBeDelete.name}" deleted successfully.`,
+        type: 'success',
+      });
       this.allSignatures = [...this.signatures];
     }
   }

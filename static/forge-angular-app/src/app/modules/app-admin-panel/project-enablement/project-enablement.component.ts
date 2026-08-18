@@ -45,6 +45,11 @@ export class ProjectEnablementComponent implements OnInit, OnDestroy {
     // at the wrong entry of `projects` whenever a search was active.
     try {
       await JiraService.saveProjectSettings(project.adminSettings, project.id);
+      JiraService.showFlag({
+        title: project.adminSettings.responseTemplatesEnabled ? 'Enabled' : 'Disabled',
+        body: `Response Templates ${project.adminSettings.responseTemplatesEnabled ? 'enabled for' : 'disabled for'} ${project.name}.`,
+        type: 'success',
+      });
     } catch (e) {
       // The write runs as the signed-in user now, so put the checkbox back if Jira refused it.
       project.adminSettings.responseTemplatesEnabled = !project.adminSettings.responseTemplatesEnabled;

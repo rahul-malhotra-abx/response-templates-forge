@@ -9,7 +9,6 @@ import { DataStorageKeys } from '../../../models/data.storage.keys.model';
 import { ActivatedRoute } from '@angular/router';
 import { JiraService } from '../../../services/jira.service';
 import { v4 as uuidv4 } from 'uuid';
-import { ToastrService } from 'ngx-toastr';
 import { MatDialog } from '@angular/material/dialog';
 import { EditTemplateComponent } from './edit-template/edit-template.component';
 import { confirm } from 'basic-modals';
@@ -38,7 +37,7 @@ export class TemplatesComponent implements OnInit {
   templateScopes = TemplateScopes;
   isAdmin = false;
 
-  constructor(private toastr: ToastrService, private route: ActivatedRoute, public dialog: MatDialog) {}
+  constructor(private route: ActivatedRoute, public dialog: MatDialog) {}
 
   async ngOnInit() {
     this.route.parent.params.subscribe(async (params) => {
@@ -122,6 +121,11 @@ export class TemplatesComponent implements OnInit {
         } catch (e) {
           return;
         }
+        JiraService.showFlag({
+          title: 'Imported',
+          body: `${result.length} ${result.length === 1 ? 'template' : 'templates'} imported into this project.`,
+          type: 'success',
+        });
       }
     });
   }
@@ -189,6 +193,11 @@ export class TemplatesComponent implements OnInit {
           // StorageService has already told the user why; nothing was stored, so stop here.
           return;
         }
+        JiraService.showFlag({
+          title: matchedIndex > -1 ? 'Updated' : 'Created',
+          body: `${result.scope} template "${result.name}" ${matchedIndex > -1 ? 'updated' : 'created'} successfully.`,
+          type: 'success',
+        });
       }
     });
   }
@@ -229,7 +238,11 @@ export class TemplatesComponent implements OnInit {
       } catch (e) {
         return;
       }
-      this.toastr.success(`${templateToBeDelete.name} deleted successfully`, `Success`);
+      JiraService.showFlag({
+        title: 'Deleted',
+        body: `${template.scope} template "${templateToBeDelete.name}" deleted successfully.`,
+        type: 'success',
+      });
     }
   }
 

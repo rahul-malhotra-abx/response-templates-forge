@@ -3,7 +3,6 @@ import { Template, TemplateScopes } from '../../../models/template.model';
 import { StorageService } from '../../../services/storage.service';
 import { DEFAULT_LIMITS } from '../../../models/default.limits';
 import { JiraUserModel } from '../../../models/jira.user.model';
-import { ToastrService } from 'ngx-toastr';
 import { MatDialog } from '@angular/material/dialog';
 import { StorageContext } from '../../../models/storage.context.enum';
 import { DataStorageKeys } from '../../../models/data.storage.keys.model';
@@ -26,7 +25,7 @@ export class AppTemplatesComponent implements OnInit {
   defaultLimits = DEFAULT_LIMITS;
   currentUser: JiraUserModel;
 
-  constructor(private toastr: ToastrService, public dialog: MatDialog) {}
+  constructor(public dialog: MatDialog) {}
 
   async ngOnInit() {
     this.templateStorageService = new StorageService(StorageContext.APPLICATION, null, DataStorageKeys.TEMPLATES);
@@ -95,6 +94,11 @@ export class AppTemplatesComponent implements OnInit {
           return;
         }
         this.templates = this.templates.sort(UtilsService.dynamicSort('name'));
+        JiraService.showFlag({
+          title: matchedIndex > -1 ? 'Updated' : 'Created',
+          body: `Global template "${result.name}" ${matchedIndex > -1 ? 'updated' : 'created'} successfully.`,
+          type: 'success',
+        });
       }
     });
   }
@@ -108,7 +112,11 @@ export class AppTemplatesComponent implements OnInit {
         this.templates = ((await this.templateStorageService.get()) || []) as Template[];
         return;
       }
-      this.toastr.success(`${templateToBeDelete.name} deleted successfully`, `Success`);
+      JiraService.showFlag({
+        title: 'Deleted',
+        body: `Global template "${templateToBeDelete.name}" deleted successfully.`,
+        type: 'success',
+      });
     }
   }
 
