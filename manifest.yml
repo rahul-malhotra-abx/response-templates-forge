@@ -81,6 +81,3 @@ permissions:
       - unsafe-inline
     scripts:
       - unsafe-eval
-  external:
-    frames:
-      - address: https://jira-editor.appbox.ai
