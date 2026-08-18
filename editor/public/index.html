@@ -11,6 +11,9 @@
   </head>
   <body>
     <div id="root"></div>
-    <script src="./static/js/main.js"></script>
+    <!-- type="module" because the bundle is code-split: Atlaskit already marks its heavy features
+         (media, emoji, syntax highlighting, icons) behind dynamic imports, and splitting honours
+         them so only the entry chunk loads before the editor renders. -->
+    <script type="module" src="./static/js/main.js"></script>
   </body>
 </html>
