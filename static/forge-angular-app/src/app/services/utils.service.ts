@@ -82,7 +82,6 @@ export class UtilsService {
   }
 
   static randomIntFromInterval(min: number, max: number) {
-    // min and max included
     return Math.floor(Math.random() * (max - min + 1) + min);
   }
 
@@ -161,7 +160,6 @@ export class UtilsService {
       property = property.substr(1);
     }
     return function (a, b) {
-      // convert numbers' to string for sorting
       const aProperty = Number.isInteger(a[property]) ? a[property].toString() : a[property].toLowerCase();
       const bProperty = Number.isInteger(b[property]) ? b[property].toString() : b[property].toLowerCase();
 

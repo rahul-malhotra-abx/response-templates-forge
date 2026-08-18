@@ -41,8 +41,7 @@ export class ProjectEnablementComponent implements OnInit, OnDestroy {
   }
 
   async updateStatus(project: any) {
-    // Takes the project itself: the row index comes from the search-filtered list, so it pointed
-    // at the wrong entry of `projects` whenever a search was active.
+    // Takes the project, not a row index — the index is into the search-filtered list.
     try {
       await JiraService.saveProjectSettings(project.adminSettings, project.id);
       JiraService.showFlag({

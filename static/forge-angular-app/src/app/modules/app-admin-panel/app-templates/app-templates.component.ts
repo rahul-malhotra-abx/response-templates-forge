@@ -88,8 +88,7 @@ export class AppTemplatesComponent implements OnInit {
         try {
           await this.templateStorageService.save(this.templates);
         } catch (e) {
-          // Global templates are app-owned, so the resolver checks admin rights itself. Re-read to
-          // drop the change the UI already applied.
+          // Re-read to drop the change the UI already applied.
           this.templates = ((await this.templateStorageService.get()) || []) as Template[];
           return;
         }

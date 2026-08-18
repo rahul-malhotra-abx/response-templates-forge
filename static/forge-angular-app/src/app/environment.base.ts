@@ -1,9 +1,5 @@
 const environments = {
   RESPONSE_TEMPLATE_PRO: {
-    /**
-     * String
-     * Name of the App.
-     */
     APP_NAME: 'Response Template Pro',
     APP_MODE: 'RESPONSE_TEMPLATE_PRO',
     APP_KEY: 'com.appbox.ai.response.templates',
@@ -15,10 +11,6 @@ const environments = {
     PAID_VERSION: true,
   },
   RESPONSE_TEMPLATE_FREE: {
-    /**
-     * String
-     * Name of the App.
-     */
     APP_NAME: 'Response Template Free',
     APP_MODE: 'RESPONSE_TEMPLATE_FREE',
     APP_KEY: 'com.appbox.ai.response.templates.free',

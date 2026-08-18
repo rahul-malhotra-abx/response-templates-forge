@@ -78,8 +78,6 @@ export class EditTemplateComponent implements OnInit {
   }
 
   async copyToClipBoard(option) {
-    // The old implementation registered a 'copy' listener per click and tried to remove it with
-    // `null`, which is a no-op — every copy left another live handler behind.
     const variable = '${' + option.key + '}';
     if (await UtilsService.copyTextToClipboard(variable)) {
       JiraService.showFlag({ title: 'Copied', body: `${variable} copied to clipboard.`, type: 'success' });
@@ -144,8 +142,7 @@ export class EditTemplateComponent implements OnInit {
       return;
     }
 
-    // The field can arrive pre-filled (clone, "Save as template"), so the input's maxLength is not
-    // enough — a name over the limit has to be rejected here until the user shortens it.
+    // The field can arrive pre-filled, so the input's maxLength is not enough on its own.
     if (name.length > DEFAULT_LIMITS.TEMPLATE_NAME) {
       alert(`Template name cannot be longer than ${DEFAULT_LIMITS.TEMPLATE_NAME} characters, please shorten it.`);
       return;
@@ -163,8 +160,7 @@ export class EditTemplateComponent implements OnInit {
       return;
     }
 
-    // The list above is whatever the caller loaded; ask it to re-check against storage so a
-    // template created elsewhere while this dialog was open still blocks the name.
+    // The list above is whatever the caller loaded, so re-check against storage.
     if (this.validateName) {
       const validationError = await this.validateName(name, this.template.id);
       if (validationError) {

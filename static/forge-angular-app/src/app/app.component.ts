@@ -19,8 +19,7 @@ export class AppComponent implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
-    // Module routing in Forge is determined by extension context, not incoming URL.
-    // We only redirect when context is available, preserving local dev behavior.
+    // Forge routes by extension context, not by URL.
     let context: any;
     try {
       context = await this.forgeContextService.getContext();
@@ -45,8 +44,7 @@ export class AppComponent implements OnInit {
       return;
     }
 
-    // Route mapping is intentionally explicit so each Forge module key/type maps to one Angular route.
-    // Some Forge contexts do not include moduleKey, so type is used as a fallback.
+    // Some Forge contexts omit moduleKey, so type is the fallback.
     switch (moduleKey) {
       case 'response-templates-project-forge':
         if (projectId) {

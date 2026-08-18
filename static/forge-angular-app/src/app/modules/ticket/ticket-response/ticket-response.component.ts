@@ -84,7 +84,6 @@ export class TicketResponseComponent implements OnInit {
     const signatureStorageService = new StorageService(StorageContext.USER, this.currentUser.accountId, DataStorageKeys.USER_SIGNATURES);
     this.signatures = (await signatureStorageService.get()) || ([] as SignatureTemplate[]);
 
-    // CODE OPTIMIZATION (Repeated code/function)
     const fetchUserRoles = ['SYSTEM_ADMIN', 'ADMINISTER', 'ADMINISTER_PROJECTS', 'EDIT_ISSUES'];
     const responseTemplateAdminRole = ['SYSTEM_ADMIN', 'ADMINISTER', 'ADMINISTER_PROJECTS'];
     const userPermissions = await JiraService.getUserPermissions(fetchUserRoles, this.projectIdOrKey);
@@ -133,19 +132,16 @@ export class TicketResponseComponent implements OnInit {
 
     this.pageLoaded = true;
 
-    // Load Current user template usage properties
     this.userTemplateProperties = await JiraService.getUserProperties(this.currentUser.accountId, [DataStorageKeys.USER_TEMPLATE_USAGE]);
     let matchedTemplates = [];
     matchedTemplates = UtilsService.deepCopy([...this.templates]);
     if (Object.keys(this.userTemplateProperties).length !== 0) {
       matchedTemplates.forEach((template) => {
-        // check if the template is a recently used template
         let foundTemplate = this.userTemplateProperties[DataStorageKeys.USER_TEMPLATE_USAGE].find(
           (recentTemplate) => template.id === recentTemplate.key,
         );
 
         if (foundTemplate) {
-          // if its a recently used template, link it to a count & last_used value
           template['count'] = foundTemplate.count;
           template['last_used'] = foundTemplate.last_used;
         } else {
@@ -154,7 +150,6 @@ export class TicketResponseComponent implements OnInit {
         }
       });
 
-      // sort templates according to recent usage
       let recentSorted = [...matchedTemplates].sort(UtilsService.dynamicSort('last_used')).reverse();
       let mostSorted = [...matchedTemplates].sort(UtilsService.dynamicSort('count')).reverse();
 
@@ -216,7 +211,6 @@ export class TicketResponseComponent implements OnInit {
     setTimeout(async () => {
       let finalComment = commentResolvedString;
       let activeSignature = this.signatures.find((signature) => signature.active);
-      // If there is an active signature and we are not merging templates or comment box is empty.
       if (activeSignature && (!this.currentContent?.content?.length || !this.mergeTemplates)) {
         finalComment = this.returnContentWithSignature(JSON.parse(commentResolvedString), activeSignature.content);
       }
@@ -462,7 +456,6 @@ export class TicketResponseComponent implements OnInit {
           }
         }
         if (!matchFound) {
-          // if its the first time its being used, add to recently used templates
           recentlyUsedTemplates.push({ key: templateID, count: 1, last_used: new Date() });
         }
       }
@@ -470,7 +463,6 @@ export class TicketResponseComponent implements OnInit {
         { key: DataStorageKeys.USER_TEMPLATE_USAGE, value: [...recentlyUsedTemplates] },
       ]);
     } else {
-      // Object => {id: template.id, used_count: 1, last_used: datetime}
       for (let index = 0; index < uniqueTemplateIDs.length; index++) {
         const templateID = uniqueTemplateIDs[index];
         valueArray.push({ key: templateID, count: 1, last_used: new Date() });

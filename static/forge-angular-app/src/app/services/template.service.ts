@@ -34,7 +34,6 @@ export const TemplateService = {
         });
 
         if (activeNodeIndex !== undefined) {
-          // condition to add new content AND second part of text (in node where the cursor was) BEFORE the rest of the former content
           for (let index = 0; index < newTemplate.content.content.length; index++) {
             const addedContent = newTemplate.content.content[index];
             parentNodeToEdit.splice(activeNodeIndex + index + 1, 0, addedContent);
