@@ -5,8 +5,7 @@ import { view } from '@forge/bridge';
   providedIn: 'root',
 })
 export class ForgeContextService {
-  // Reads Forge extension context when the app is running inside Forge Custom UI.
-  // During local Angular-only runs this call may fail, so we safely return null.
+  // Fails during local Angular-only runs, where there is no Forge context to read.
   async getContext(): Promise<any | null> {
     try {
       return await view.getContext();

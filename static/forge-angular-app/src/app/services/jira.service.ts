@@ -111,10 +111,7 @@ export class JiraService {
     });
   }
 
-  /**
-   * Issue writes go through the bridge instead of the resolver, so Jira attributes them to the
-   * logged in user. The resolver runs `api.asApp()`, which posts as the app itself.
-   */
+  /** Via the bridge, not the resolver, so Jira attributes the write to the user rather than the app. */
   private static async requestJiraAsUser(path: string, options: any = {}) {
     const response = await requestJira(path, {
       ...options,
@@ -155,21 +152,21 @@ export class JiraService {
     callback?.({ jql: options?.jql || '' });
   }
 
+  private static flagSequence = 0;
+
+  /** Successes auto-dismiss; warnings and errors wait to be dismissed. `close` overrides. */
   static showFlag(options: { title: string; close?: string; body: string; type: 'success' | 'info' | 'warning' | 'error' }) {
     forgeShowFlag({
-      id: `rt-${options.type}-${Date.now()}`,
+      // A repeated id replaces the flag already on screen.
+      id: `rt-${options.type}-${Date.now()}-${(this.flagSequence += 1)}`,
       title: options.title,
       type: options.type,
       description: options.body,
-      isAutoDismiss: options.close === 'auto',
+      isAutoDismiss: options.close ? options.close === 'auto' : options.type === 'success' || options.type === 'info',
     });
   }
 
-  /**
-   * Connect's `AP.jira.refreshIssuePage()`. Updates the issue view in place so a comment the app
-   * just posted appears without the user reloading. Not every module view can refresh — the issue
-   * action modal cannot — and the comment is posted either way, so a refusal is not worth surfacing.
-   */
+  /** Not every module view can refresh, and the comment posted either way, so ignore a refusal. */
   static refreshIssuePage() {
     view.refresh().catch(() => undefined);
   }
@@ -284,8 +281,7 @@ export class JiraService {
   }
 
   static async addTicketComment(ticketIdOrKey: string, comment: any, properties: any[] = [], internal: boolean = false) {
-    // `sd.public.comment` is always sent: a JSM comment created without it falls back to
-    // internal, so a public reply would silently land as an internal note.
+    // Always sent: without it a JSM comment falls back to internal.
     const commentProperties = [
       ...properties.filter((property) => property.key !== 'sd.public.comment'),
       { key: 'sd.public.comment', value: { internal } },
@@ -309,11 +305,7 @@ export class JiraService {
     }
   }
 
-  /**
-   * `projectIdOrKey` matters: project permissions such as ADMINISTER_PROJECTS mean nothing without a
-   * project to evaluate against. The cache is keyed on it, and on the permission list — the single
-   * slot it used before handed the first answer to every later caller.
-   */
+  /** Cached per project and permission list — ADMINISTER_PROJECTS means nothing without a project. */
   static async getUserPermissions(permissions: string[], projectIdOrKey?: string) {
     const cacheKey = `${projectIdOrKey || 'global'}|${[...permissions].sort().join(',')}`;
     if (this.cache.userPermissions[cacheKey]) {

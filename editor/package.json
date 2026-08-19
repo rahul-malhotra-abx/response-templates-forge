@@ -1,0 +1,46 @@
+{
+  "name": "response-templates-editor",
+  "version": "1.0.0",
+  "private": true,
+  "description": "The Atlaskit comment editor, ported from appbox-ai/reactembed @ 1fd4209 and served from this app's own static resources so the app declares no egress.",
+  "scripts": {
+    "prebuild": "rm -rf ../static/forge-angular-app/src/assets/editor",
+    "build": "esbuild src/index.tsx --bundle --minify --target=es2018 --format=esm --splitting --define:process.env.NODE_ENV=\\\"production\\\" --define:global=globalThis --inject:src/node-shims.js --alias:pdfjs-dist/build/pdf=./src/unused-media-stub.cjs --alias:pdfjs-dist/web/pdf_viewer=./src/unused-media-stub.cjs --alias:@atlaskit/media-viewer=./src/unused-media-stub.cjs --alias:@atlaskit/media-editor=./src/unused-media-stub.cjs --alias:@atlaskit/media-picker=./src/unused-media-stub.cjs --loader:.svg=dataurl --loader:.png=dataurl --loader:.gif=dataurl --outdir=../static/forge-angular-app/src/assets/editor/static/js --entry-names=main --chunk-names=chunks/[name]-[hash] && cp public/index.html ../static/forge-angular-app/src/assets/editor/index.html"
+  },
+  "comments": {
+    "dependencies": [
+      "Versions and package-lock.json come from appbox-ai/reactembed @ 1fd4209. Do not relax them.",
+      "@atlaskit/editor-core 153 declares caret ranges across ~140 @atlaskit packages; resolving them",
+      "fresh pulls a 2024+ editor-common that needs peers this tree does not have, and the build fails.",
+      "react-intl-next does not exist on npm — the name is a 0.0.1-security placeholder. reactembed",
+      "worked around it by committing a copy of react-intl 5.24.3 into node_modules. The npm: alias",
+      "below does the same thing reproducibly."
+    ]
+  },
+  "dependencies": {
+    "@atlaskit/avatar": "20.5.2",
+    "@atlaskit/button": "16.1.4",
+    "@atlaskit/comment": "10.3.1",
+    "@atlaskit/editor-core": "153.1.3",
+    "@atlaskit/media-core": "32.2.0",
+    "@atlaskit/smart-card": "17.7.12",
+    "@formatjs/intl": "^2.1.0",
+    "assert": "^2.1.0",
+    "buffer": "^6.0.3",
+    "events": "^3.3.0",
+    "iframe-channel": "^1.2.10",
+    "process": "^0.11.10",
+    "react": "16.8.2",
+    "react-dom": "16.8.2",
+    "react-intl": "2.6.0",
+    "react-intl-next": "npm:react-intl@5.24.3",
+    "string_decoder": "^1.3.0",
+    "styled-components": "3.2.6"
+  },
+  "devDependencies": {
+    "@types/react": "^16.14.0",
+    "@types/react-dom": "^16.9.0",
+    "esbuild": "^0.25.0",
+    "typescript": "^4.5.5"
+  }
+}

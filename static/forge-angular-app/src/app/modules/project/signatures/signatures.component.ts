@@ -8,7 +8,6 @@ import { DataStorageKeys } from '../../../models/data.storage.keys.model';
 import { ActivatedRoute } from '@angular/router';
 import { JiraService } from '../../../services/jira.service';
 import { v4 as uuidv4 } from 'uuid';
-import { ToastrService } from 'ngx-toastr';
 import { MatDialog } from '@angular/material/dialog';
 import { EditSignatureComponent } from './edit-signature/edit-signature.component';
 import { alert, confirm } from 'basic-modals';
@@ -31,7 +30,7 @@ export class SignaturesComponent implements OnInit {
   signatures: SignatureTemplate[] = [];
   signatureStorageService: StorageService;
 
-  constructor(private toastr: ToastrService, private route: ActivatedRoute, public dialog: MatDialog) {}
+  constructor(private route: ActivatedRoute, public dialog: MatDialog) {}
 
   ngOnInit(): void {
     this.route.parent.params.subscribe(async (params) => {
@@ -40,7 +39,6 @@ export class SignaturesComponent implements OnInit {
 
       this.signatureStorageService = new StorageService(StorageContext.USER, this.currentUser.accountId, DataStorageKeys.USER_SIGNATURES);
       this.signatures = (await this.signatureStorageService.get()) || ([] as SignatureTemplate[]);
-      // console.log('signatures', this.signatures);
 
       this.allSignatures = [...this.signatures];
 
@@ -56,8 +54,6 @@ export class SignaturesComponent implements OnInit {
   }
 
   openEditSignatureModal(signature: SignatureTemplate): void {
-    // Hiding the Add button was the only thing enforcing the cap, and it used `<=`, so the 11th
-    // signature could still be created.
     if (!signature && this.allSignatures.length >= DEFAULT_LIMITS.USER_SIGNATURES) {
       alert(`Cannot add more than ${DEFAULT_LIMITS.USER_SIGNATURES} signatures.`);
       return;
@@ -94,14 +90,28 @@ export class SignaturesComponent implements OnInit {
         } else {
           this.signatures.push(result);
         }
-        await this.signatureStorageService.save(this.signatures);
+        try {
+          await this.signatureStorageService.save(this.signatures);
+        } catch (e) {
+          this.signatures = ((await this.signatureStorageService.get()) || []) as SignatureTemplate[];
+          this.allSignatures = [...this.signatures];
+          return;
+        }
 
         this.allSignatures = [...this.signatures];
+        JiraService.showFlag({
+          title: matchedIndex > -1 ? 'Updated' : 'Created',
+          body: `Signature "${result.name}" ${matchedIndex > -1 ? 'updated' : 'created'} successfully.`,
+          type: 'success',
+        });
       }
     });
   }
 
   async toggleActiveSignature(signature: SignatureTemplate) {
+    // Activating one deactivates the rest, so a rejected write restores every flag.
+    const activeBefore = new Map(this.signatures.map((sign) => [sign.id, sign.active]));
+
     signature.active = !signature.active;
     if (signature.active) {
       this.signatures.forEach((sign) => {
@@ -110,15 +120,30 @@ export class SignaturesComponent implements OnInit {
         }
       });
     }
-    await this.signatureStorageService.save(this.signatures);
+
+    try {
+      await this.signatureStorageService.save(this.signatures);
+    } catch (e) {
+      this.signatures.forEach((sign) => (sign.active = activeBefore.get(sign.id)));
+    }
   }
 
   async deleteSignature(signature: SignatureTemplate) {
     if (await confirm('Are you sure?')) {
       const index = this.signatures.findIndex((t) => t.id === signature.id);
       const signatureToBeDelete: SignatureTemplate = this.signatures.splice(index, 1)[0] as SignatureTemplate;
-      await this.signatureStorageService.save(this.signatures);
-      this.toastr.success(`${signatureToBeDelete.name} deleted successfully`, `Success`);
+      try {
+        await this.signatureStorageService.save(this.signatures);
+      } catch (e) {
+        this.signatures.splice(index, 0, signatureToBeDelete);
+        this.allSignatures = [...this.signatures];
+        return;
+      }
+      JiraService.showFlag({
+        title: 'Deleted',
+        body: `Signature "${signatureToBeDelete.name}" deleted successfully.`,
+        type: 'success',
+      });
       this.allSignatures = [...this.signatures];
     }
   }

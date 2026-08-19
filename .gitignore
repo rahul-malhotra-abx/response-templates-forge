@@ -5,3 +5,5 @@ dist/
 .env
 static/forge-angular-app/dist/
 static/forge-angular-app/node_modules/
+# Built by `npm run editor:build` from editor/ — derived, and 8 MB of it.
+static/forge-angular-app/src/assets/editor/

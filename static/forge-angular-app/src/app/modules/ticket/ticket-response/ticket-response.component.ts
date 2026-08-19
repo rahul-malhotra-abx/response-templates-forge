@@ -36,7 +36,6 @@ export class TicketResponseComponent implements OnInit {
   model: any;
   templates: Template[];
   searchControl = new FormControl();
-  // options: User[] = [{name: 'Mary'}, {name: 'Shelley'}, {name: 'Igor'}];
   filteredOptions: Observable<any[]>;
   projectIdOrKey: string;
   issueIdOrKey: string;
@@ -85,7 +84,6 @@ export class TicketResponseComponent implements OnInit {
     const signatureStorageService = new StorageService(StorageContext.USER, this.currentUser.accountId, DataStorageKeys.USER_SIGNATURES);
     this.signatures = (await signatureStorageService.get()) || ([] as SignatureTemplate[]);
 
-    // CODE OPTIMIZATION (Repeated code/function)
     const fetchUserRoles = ['SYSTEM_ADMIN', 'ADMINISTER', 'ADMINISTER_PROJECTS', 'EDIT_ISSUES'];
     const responseTemplateAdminRole = ['SYSTEM_ADMIN', 'ADMINISTER', 'ADMINISTER_PROJECTS'];
     const userPermissions = await JiraService.getUserPermissions(fetchUserRoles, this.projectIdOrKey);
@@ -134,19 +132,16 @@ export class TicketResponseComponent implements OnInit {
 
     this.pageLoaded = true;
 
-    // Load Current user template usage properties
     this.userTemplateProperties = await JiraService.getUserProperties(this.currentUser.accountId, [DataStorageKeys.USER_TEMPLATE_USAGE]);
     let matchedTemplates = [];
     matchedTemplates = UtilsService.deepCopy([...this.templates]);
     if (Object.keys(this.userTemplateProperties).length !== 0) {
       matchedTemplates.forEach((template) => {
-        // check if the template is a recently used template
         let foundTemplate = this.userTemplateProperties[DataStorageKeys.USER_TEMPLATE_USAGE].find(
           (recentTemplate) => template.id === recentTemplate.key,
         );
 
         if (foundTemplate) {
-          // if its a recently used template, link it to a count & last_used value
           template['count'] = foundTemplate.count;
           template['last_used'] = foundTemplate.last_used;
         } else {
@@ -155,7 +150,6 @@ export class TicketResponseComponent implements OnInit {
         }
       });
 
-      // sort templates according to recent usage
       let recentSorted = [...matchedTemplates].sort(UtilsService.dynamicSort('last_used')).reverse();
       let mostSorted = [...matchedTemplates].sort(UtilsService.dynamicSort('count')).reverse();
 
@@ -191,7 +185,6 @@ export class TicketResponseComponent implements OnInit {
   }
 
   searchFilter() {
-    // this.activeFilter = 'All';
     this.filteredOptions = of(
       [...this.templates]
         .filter((template) => this.templateSearch.filter === 'All' || template.scope === this.templateSearch.filter)
@@ -218,7 +211,6 @@ export class TicketResponseComponent implements OnInit {
     setTimeout(async () => {
       let finalComment = commentResolvedString;
       let activeSignature = this.signatures.find((signature) => signature.active);
-      // If there is an active signature and we are not merging templates or comment box is empty.
       if (activeSignature && (!this.currentContent?.content?.length || !this.mergeTemplates)) {
         finalComment = this.returnContentWithSignature(JSON.parse(commentResolvedString), activeSignature.content);
       }
@@ -269,7 +261,6 @@ export class TicketResponseComponent implements OnInit {
         this.currentContent = value.value;
       });
       setTimeout(async () => {
-        // let activeSignature = this.signatures.find(signature => signature.active);
         await this.frameWrapper.setProps({
           showSave: false,
           showCancel: false,
@@ -286,11 +277,7 @@ export class TicketResponseComponent implements OnInit {
     this.currentTabLabel = tabChangeEvent.tab.textLabel;
   }
 
-  /**
-   * Templates are re-read from storage instead of reusing the list loaded with the issue view.
-   * That snapshot goes stale as soon as anything is created elsewhere, which let duplicate names
-   * through and made the save overwrite templates added since the page loaded.
-   */
+  /** Re-read rather than reusing the list loaded with the issue view, which goes stale. */
   private async loadTemplatesForScope(scope: string): Promise<Template[]> {
     const storageService = scope === TemplateScopes.PERSONAL ? this.personalTemplateStorageService : this.projectTemplateStorageService;
     return ((await storageService?.get()) || []) as Template[];
@@ -304,8 +291,7 @@ export class TicketResponseComponent implements OnInit {
   async saveAsNewTemplate() {
     this.isSavingTemplate = true;
 
-    // A response composed in the editor has no scope and a global template is saved back as a
-    // project one, so the limit has to be checked against the scope the copy actually lands in.
+    // Checked against the scope the copy lands in, not the one it came from.
     const targetScope =
       this.usedTemplate?.scope && this.usedTemplate.scope !== TemplateScopes.GLOBAL ? this.usedTemplate.scope : TemplateScopes.PROJECT;
 
@@ -336,8 +322,6 @@ export class TicketResponseComponent implements OnInit {
         projectIdOrKey: this.projectIdOrKey,
         isAdmin: this.isAdmin,
         newTemplate,
-        // Re-checked against storage when OK is pressed, so a template created while this dialog
-        // was open still blocks the name.
         validateName: async (name: string, templateId: string) => {
           const currentTemplates = await this.loadTemplatesForScope(targetScope);
           return TicketResponseComponent.isNameTaken(currentTemplates, name, templateId)
@@ -351,8 +335,6 @@ export class TicketResponseComponent implements OnInit {
       if (result) {
         let matchedIndex: number;
         if (result.scope === TemplateScopes.PERSONAL) {
-          // Re-read so the save merges into whatever is in storage now instead of overwriting it
-          // with the list this issue view started with.
           const currentTemplates = await this.loadTemplatesForScope(TemplateScopes.PERSONAL);
           matchedIndex = currentTemplates.findIndex((t) => t.id === result.id);
           result.updatedAt = new Date();
@@ -367,7 +349,6 @@ export class TicketResponseComponent implements OnInit {
           try {
             await this.personalTemplateStorageService.save(currentTemplates);
           } catch (e) {
-            // StorageService has already explained the failure; nothing was stored.
             this.isSavingTemplate = false;
             return;
           }
@@ -451,9 +432,7 @@ export class TicketResponseComponent implements OnInit {
       type: 'success',
     });
     await this.saveRecentTemplates([...this.multipleUsedTemplates]);
-    // Connect reloaded the whole issue page here, which reset the panel as a side effect. Refreshing
-    // the issue view in place does not, so the composer is cleared explicitly — otherwise the text
-    // sits there after it has already been posted, and looks unsent.
+    // `view.refresh()` does not reset the panel the way Connect's page reload did.
     this.usedTemplate = undefined;
     await this.cancelEditing();
     JiraService.refreshIssuePage();
@@ -477,7 +456,6 @@ export class TicketResponseComponent implements OnInit {
           }
         }
         if (!matchFound) {
-          // if its the first time its being used, add to recently used templates
           recentlyUsedTemplates.push({ key: templateID, count: 1, last_used: new Date() });
         }
       }
@@ -485,7 +463,6 @@ export class TicketResponseComponent implements OnInit {
         { key: DataStorageKeys.USER_TEMPLATE_USAGE, value: [...recentlyUsedTemplates] },
       ]);
     } else {
-      // Object => {id: template.id, used_count: 1, last_used: datetime}
       for (let index = 0; index < uniqueTemplateIDs.length; index++) {
         const templateID = uniqueTemplateIDs[index];
         valueArray.push({ key: templateID, count: 1, last_used: new Date() });
@@ -508,8 +485,7 @@ export class TicketResponseComponent implements OnInit {
         value: activeSignature ? activeSignature.content : '',
       });
     }
-    // Without a tab key — inserting a template while already editing — keep the tab the user
-    // picked. Resetting the index forced every JSM response back to "Add internal note".
+    // Without a tab key, keep the tab the user picked rather than resetting to internal note.
     if (tabKey) {
       this.currentTabIndex = this.tabMapping.find((tab) => tab.key === tabKey)?.position ?? 0;
     }

@@ -41,10 +41,14 @@ export class ProjectEnablementComponent implements OnInit, OnDestroy {
   }
 
   async updateStatus(project: any) {
-    // Takes the project itself: the row index comes from the search-filtered list, so it pointed
-    // at the wrong entry of `projects` whenever a search was active.
+    // Takes the project, not a row index — the index is into the search-filtered list.
     try {
       await JiraService.saveProjectSettings(project.adminSettings, project.id);
+      JiraService.showFlag({
+        title: project.adminSettings.responseTemplatesEnabled ? 'Enabled' : 'Disabled',
+        body: `Response Templates ${project.adminSettings.responseTemplatesEnabled ? 'enabled for' : 'disabled for'} ${project.name}.`,
+        type: 'success',
+      });
     } catch (e) {
       // The write runs as the signed-in user now, so put the checkbox back if Jira refused it.
       project.adminSettings.responseTemplatesEnabled = !project.adminSettings.responseTemplatesEnabled;

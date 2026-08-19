@@ -16,7 +16,6 @@ const renderedHtmlToText = (html: any): string => {
 };
 
 export const DollarVariableResolverService = {
-  /*********** CUSTOM DOLLAR VARIABLES ************/
   current_user_account_id: (params: { column: any; currentUser: JiraUserModel; projectData: any; issueData: any }): string => {
     return params.currentUser.accountId;
   },
@@ -68,7 +67,6 @@ export const DollarVariableResolverService = {
   project_lead_name: (params: { column: any; currentUser: JiraUserModel; projectData: any; issueData: any }): string => {
     return params.projectData.lead.displayName;
   },
-  /*********** JIRA COLUMNS ************/
   jiraUserRenderer: (params: { column: any; currentUser: JiraUserModel; projectData: any; issueData: any }): string => {
     return params.issueData.fields[params.column.key] ? params.issueData.fields[params.column.key]['displayName'] : '';
   },

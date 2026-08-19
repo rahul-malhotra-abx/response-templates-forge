@@ -1,0 +1,25 @@
+body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+code {
+    font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
+    monospace;
+}
+
+[data-testid="ak-editor-secondary-toolbar"], [data-testid="ak-editor-secondary-toolbar"] button {
+    display: none !important;
+}
+
+.show-save [data-testid="ak-editor-secondary-toolbar"], .show-save [data-testid="ak-editor-secondary-toolbar"] button[data-testid="comment-save-button"] {
+    display: inline-flex;
+}
+
+.show-cancel [data-testid="ak-editor-secondary-toolbar"], .show-cancel [data-testid="ak-editor-secondary-toolbar"] button:last-child {
+    display: inline-flex;
+}
