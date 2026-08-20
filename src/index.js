@@ -1,5 +1,6 @@
 import Resolver from "@forge/resolver";
 import api, { assumeTrustedRoute, getAppContext, route } from "@forge/api";
+import { kvs } from "@forge/kvs";
 
 const resolver = new Resolver();
 
@@ -448,7 +449,7 @@ resolver.define("saveUserProperties", async ({ payload, context }) => {
   return { ok: true };
 });
 
-/** The app property store has no user context, so `asApp()` is unavoidable and Jira cannot police it. */
+/** App storage carries no user context, so Jira cannot police these writes — the caller is checked here. */
 async function assertJiraAdmin(operation) {
   const response = await api
     .asUser()
@@ -464,77 +465,82 @@ async function assertJiraAdmin(operation) {
   }
 }
 
-async function saveForgeAppProperties(properties) {
-  for (const property of properties) {
-    const response = await api
-      .asApp()
-      .requestJira(route`/rest/forge/1/app/properties/${property.key}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(property.value),
-      });
-    await parseJsonResponse(response);
+const LEGACY_ADDON_KEY = "com.appbox.ai.response.templates";
+
+async function copyPropertyStoreToStorage(listRoute, valueRoute) {
+  const imported = [];
+  const listResponse = await api.asApp().requestJira(listRoute);
+  if (!listResponse.ok) {
+    // A store that cannot be listed is the difference between a full and a silent partial migration.
+    console.warn("Legacy property store could not be listed", {
+      status: listResponse.status,
+    });
+    return imported;
   }
-}
 
-/** Pre-migration global templates live in the Connect store. Never fatal — fall back to Forge data. */
-async function readLegacyAppProperty(addonKey, propertyKey) {
-  try {
-    const response = await api
-      .asApp()
-      .requestJira(
-        route`/rest/atlassian-connect/1/addons/${addonKey}/properties/${propertyKey}`,
-      );
+  const { keys = [] } = await parseJsonResponse(listResponse, {
+    operation: "migrateLegacyTemplates",
+  });
 
-    if (!response.ok) {
-      return undefined;
+  for (const { key } of keys) {
+    if ((await kvs.get(key)) !== undefined) {
+      continue;
     }
 
-    const data = await parseJsonResponse(response);
-    return data?.value;
-  } catch (error) {
-    console.error("Legacy app property read failed", {
-      propertyKey,
-      message: error?.message,
+    const response = await api.asApp().requestJira(valueRoute(key));
+    if (!response.ok) {
+      continue;
+    }
+
+    const { value } = await parseJsonResponse(response, {
+      operation: "migrateLegacyTemplates",
+      key,
     });
-    return undefined;
+    if (value !== undefined) {
+      await kvs.set(key, value);
+      imported.push(key);
+    }
   }
+
+  return imported;
+}
+
+/**
+ * Forge store first, Connect second: that is the precedence the property-store build read with,
+ * and a key already in storage is never overwritten, so re-running on upgrade is harmless.
+ */
+export async function migrateLegacyTemplates() {
+  const fromForge = await copyPropertyStoreToStorage(
+    route`/rest/forge/1/app/properties`,
+    (key) => route`/rest/forge/1/app/properties/${key}`,
+  );
+
+  // Only the paid Connect key ever shipped; the free listing has no legacy store behind it.
+  const fromConnect = await copyPropertyStoreToStorage(
+    route`/rest/atlassian-connect/1/addons/${LEGACY_ADDON_KEY}/properties`,
+    (key) =>
+      route`/rest/atlassian-connect/1/addons/${LEGACY_ADDON_KEY}/properties/${key}`,
+  );
+
+  const imported = [...fromForge, ...fromConnect];
+  console.log("Legacy template import finished", {
+    fromForge,
+    fromConnect,
+    imported: imported.length,
+  });
+  return imported;
 }
 
 resolver.define("getAppProperties", async ({ payload }) => {
   const properties = Array.isArray(payload?.properties)
     ? payload.properties
     : [];
-  const addonKey = payload?.addonKey || "com.appbox.ai.response.templates";
   const result = {};
-  const carriedOver = [];
 
   for (const propertyKey of properties) {
-    const forgeResponse = await api
-      .asApp()
-      .requestJira(route`/rest/forge/1/app/properties/${propertyKey}`);
-
-    if (forgeResponse.status !== 404) {
-      const data = await parseJsonResponse(forgeResponse);
-      result[data.key] = data.value;
-      continue;
-    }
-
-    const legacyValue = await readLegacyAppProperty(addonKey, propertyKey);
-    if (legacyValue !== undefined) {
-      result[propertyKey] = legacyValue;
-      carriedOver.push({ key: propertyKey, value: legacyValue });
-    }
-  }
-
-  // Copy forward so the fallback stops running once a site has been read through.
-  if (carriedOver.length > 0) {
-    try {
-      await saveForgeAppProperties(carriedOver);
-    } catch (error) {
-      console.error("Copying legacy app properties forward failed", {
-        message: error?.message,
-      });
+    const value = await kvs.get(propertyKey);
+    if (value !== undefined) {
+      result[propertyKey] = value;
     }
   }
 
@@ -549,9 +555,32 @@ resolver.define("saveAppProperties", async ({ payload, context }) => {
     : [];
 
   await assertJiraAdmin("saveAppProperties");
-  await saveForgeAppProperties(properties);
+
+  for (const property of properties) {
+    await kvs.set(property.key, property.value);
+  }
 
   return { ok: true };
+});
+
+resolver.define("importLegacyAppProperties", async ({ context }) => {
+  assertLicensed(context);
+
+  // The permission call is inline on purpose: FSRT does not follow it through a helper.
+  const permissionResponse = await api
+    .asUser()
+    .requestJira(route`/rest/api/3/mypermissions?permissions=ADMINISTER`);
+  const permissions = await parseJsonResponse(permissionResponse, {
+    operation: "importLegacyAppProperties",
+  });
+
+  if (!permissions?.permissions?.ADMINISTER?.havePermission) {
+    throw new Error(
+      "Jira administrator rights are required to import global templates.",
+    );
+  }
+
+  return { imported: await migrateLegacyTemplates() };
 });
 
 export const handler = resolver.getDefinitions();

@@ -52,7 +52,12 @@
             </td>
           </tr>
           <tr *ngIf="templates?.length === 0">
-            <td colspan="6" class="text-center border-bottom-0">No templates</td>
+            <td colspan="6" class="text-center border-bottom-0">
+              No templates
+              <button class="btn btn-link p-0 ms-2 align-baseline" [disabled]="importing" (click)="importLegacyTemplates()">
+                {{ importing ? 'Importing…' : 'Import from the previous version' }}
+              </button>
+            </td>
           </tr>
         </tbody>
       </table>

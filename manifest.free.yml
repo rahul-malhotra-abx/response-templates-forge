@@ -52,7 +52,15 @@ modules:
       title: Response Templates for Jira - Admin Panel
       layout: blank
       icon: https://response-templates.appbox.ai/assets/images/response-template-dark.svg
+  trigger:
+    - key: migrate-legacy-templates
+      function: migrate
+      events:
+        - avi:forge:installed:app
+        - avi:forge:upgraded:app
   function:
+    - key: migrate
+      handler: index.migrateLegacyTemplates
     - key: resolver
       handler: index.handler
 
@@ -77,6 +85,7 @@ permissions:
     - write:project.property:jira
     - read:jira-user
     - read:avatar:jira
+    - storage:app
   content:
     styles:
       - unsafe-inline
