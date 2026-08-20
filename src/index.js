@@ -466,6 +466,8 @@ async function assertJiraAdmin(operation) {
 }
 
 const LEGACY_ADDON_KEY = "com.appbox.ai.response.templates";
+const DEFAULT_PROJECT_ENABLED_KEY =
+  "com.appbox.ai.response.templates_default-project-enabled";
 
 async function copyPropertyStoreToStorage(listRoute, valueRoute) {
   const imported = [];
@@ -483,6 +485,10 @@ async function copyPropertyStoreToStorage(listRoute, valueRoute) {
   });
 
   for (const { key } of keys) {
+    if (key === DEFAULT_PROJECT_ENABLED_KEY) {
+      continue;
+    }
+
     if ((await kvs.get(key)) !== undefined) {
       continue;
     }
@@ -530,6 +536,109 @@ export async function migrateLegacyTemplates() {
   });
   return imported;
 }
+
+async function readForgeAppProperty(propertyKey) {
+  const response = await api
+    .asApp()
+    .requestJira(route`/rest/forge/1/app/properties/${propertyKey}`);
+
+  if (!response.ok) {
+    return undefined;
+  }
+
+  const { value } = await parseJsonResponse(response, { propertyKey });
+  return value;
+}
+
+async function writeForgeAppProperty(propertyKey, value) {
+  const response = await api
+    .asApp()
+    .requestJira(route`/rest/forge/1/app/properties/${propertyKey}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(value),
+    });
+
+  await parseJsonResponse(response, { propertyKey });
+}
+
+/**
+ * Display conditions are evaluated against entity properties, so this flag stays in the app
+ * property store rather than moving to storage with the templates.
+ */
+async function adoptLegacyProjectEnabledDefault() {
+  const response = await api
+    .asApp()
+    .requestJira(
+      route`/rest/atlassian-connect/1/addons/${LEGACY_ADDON_KEY}/properties/${DEFAULT_PROJECT_ENABLED_KEY}`,
+    );
+
+  if (!response.ok) {
+    console.log("No legacy project enablement default to carry over", {
+      status: response.status,
+    });
+    return undefined;
+  }
+
+  const { value } = await parseJsonResponse(response, {
+    operation: "adoptLegacyProjectEnabledDefault",
+  });
+  const enabled = value === true;
+  await writeForgeAppProperty(DEFAULT_PROJECT_ENABLED_KEY, enabled);
+  console.log("Project enablement default carried over", { enabled });
+  return enabled;
+}
+
+export async function migrateDefaultProjectEnabled() {
+  if ((await readForgeAppProperty(DEFAULT_PROJECT_ENABLED_KEY)) !== undefined) {
+    return;
+  }
+
+  await adoptLegacyProjectEnabledDefault();
+}
+
+resolver.define("getDefaultProjectEnabled", async () => {
+  // Inline, not via a helper: FSRT does not follow the permission call through one.
+  const permissionResponse = await api
+    .asUser()
+    .requestJira(route`/rest/api/3/mypermissions?permissions=ADMINISTER`);
+  const permissions = await parseJsonResponse(permissionResponse, {
+    operation: "getDefaultProjectEnabled",
+  });
+
+  if (!permissions?.permissions?.ADMINISTER?.havePermission) {
+    throw new Error(
+      "Jira administrator rights are required to read project enablement defaults.",
+    );
+  }
+
+  const stored = await readForgeAppProperty(DEFAULT_PROJECT_ENABLED_KEY);
+  const enabled =
+    stored === undefined ? await adoptLegacyProjectEnabledDefault() : stored === true;
+
+  // Absent in both stores means enabled: that is what the display conditions fall back to.
+  return { enabled: enabled === undefined ? true : enabled };
+});
+
+resolver.define("setDefaultProjectEnabled", async ({ payload, context }) => {
+  assertLicensed(context);
+
+  const permissionResponse = await api
+    .asUser()
+    .requestJira(route`/rest/api/3/mypermissions?permissions=ADMINISTER`);
+  const permissions = await parseJsonResponse(permissionResponse, {
+    operation: "setDefaultProjectEnabled",
+  });
+
+  if (!permissions?.permissions?.ADMINISTER?.havePermission) {
+    throw new Error(
+      "Jira administrator rights are required to change project enablement defaults.",
+    );
+  }
+
+  await writeForgeAppProperty(DEFAULT_PROJECT_ENABLED_KEY, payload?.enabled === true);
+  return { ok: true };
+});
 
 resolver.define("getAppProperties", async ({ payload }) => {
   const properties = Array.isArray(payload?.properties)

@@ -19,6 +19,8 @@ export class ProjectEnablementComponent implements OnInit, OnDestroy {
     name: '',
   };
   maxResults = 50;
+  defaultEnabled = true;
+  appliedDefault = true;
   UtilService = UtilsService;
   private avatarObjectUrls: string[] = [];
 
@@ -30,34 +32,75 @@ export class ProjectEnablementComponent implements OnInit, OnDestroy {
       response = await JiraService.getAllProjects('', this.maxResults, this.projects.length);
       this.projects.push(...response.values);
     }
+    this.defaultEnabled = (await JiraService.getDefaultProjectEnabled())?.enabled !== false;
+    this.appliedDefault = this.defaultEnabled;
+
     for (const project of this.projects) {
-      if (!project.properties[`${ENVIRONMENT.APP_BASE_KEY}_${DataStorageKeys.PROJECT_ADMIN_SETTINGS}`]) {
-        project.properties[`${ENVIRONMENT.APP_BASE_KEY}_${DataStorageKeys.PROJECT_ADMIN_SETTINGS}`] =
-          UtilsService.deepCopy(DefaultProjectAdminSettings);
-      }
-      project.adminSettings = project.properties[`${ENVIRONMENT.APP_BASE_KEY}_${DataStorageKeys.PROJECT_ADMIN_SETTINGS}`];
+      const stored = project.properties[`${ENVIRONMENT.APP_BASE_KEY}_${DataStorageKeys.PROJECT_ADMIN_SETTINGS}`];
+      project.adminSettings = stored || UtilsService.deepCopy(DefaultProjectAdminSettings);
+      // No stored flag means the project follows the global default rather than being enabled outright.
+      project.status =
+        typeof stored?.responseTemplatesEnabled === 'boolean' ? (stored.responseTemplatesEnabled ? 'enabled' : 'disabled') : 'default';
+      project.appliedStatus = project.status;
     }
     this.pageLoaded = true;
   }
 
   async updateStatus(project: any) {
-    // Takes the project, not a row index — the index is into the search-filtered list.
+    const settings = { ...project.adminSettings, version: project.adminSettings?.version ?? DefaultProjectAdminSettings.version };
+    if (project.status === 'default') {
+      delete settings.responseTemplatesEnabled;
+    } else {
+      settings.responseTemplatesEnabled = project.status === 'enabled';
+    }
+
     try {
-      await JiraService.saveProjectSettings(project.adminSettings, project.id);
+      await JiraService.saveProjectSettings(settings, project.id);
+      project.adminSettings = settings;
+      project.appliedStatus = project.status;
       JiraService.showFlag({
-        title: project.adminSettings.responseTemplatesEnabled ? 'Enabled' : 'Disabled',
-        body: `Response Templates ${project.adminSettings.responseTemplatesEnabled ? 'enabled for' : 'disabled for'} ${project.name}.`,
+        title: this.statusLabel(project.status),
+        body:
+          project.status === 'default'
+            ? `${project.name} now follows the default for new projects.`
+            : `Response Templates ${project.status === 'enabled' ? 'enabled for' : 'disabled for'} ${project.name}.`,
         type: 'success',
       });
     } catch (e) {
-      // The write runs as the signed-in user now, so put the checkbox back if Jira refused it.
-      project.adminSettings.responseTemplatesEnabled = !project.adminSettings.responseTemplatesEnabled;
+      // The write runs as the signed-in user, so put the dropdown back if Jira refused it.
+      project.status = project.appliedStatus;
       JiraService.showFlag({
         title: 'Save failed',
         body: `Could not update ${project.name}. Jira administrator rights are required.`,
         type: 'error',
       });
     }
+  }
+
+  async updateDefault() {
+    try {
+      await JiraService.setDefaultProjectEnabled(this.defaultEnabled);
+      this.appliedDefault = this.defaultEnabled;
+      JiraService.showFlag({
+        title: 'Default updated',
+        body: `Projects without their own setting are now ${this.defaultEnabled ? 'enabled' : 'disabled'}.`,
+        type: 'success',
+      });
+    } catch (e) {
+      this.defaultEnabled = this.appliedDefault;
+      JiraService.showFlag({
+        title: 'Save failed',
+        body: 'Jira administrator rights are required to change the default.',
+        type: 'error',
+      });
+    }
+  }
+
+  statusLabel(status: string) {
+    if (status === 'default') {
+      return `Default [${this.defaultEnabled ? 'Enabled' : 'Disabled'}]`;
+    }
+    return status === 'enabled' ? 'Enabled' : 'Disabled';
   }
 
   ngOnDestroy() {

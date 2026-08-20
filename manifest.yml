@@ -9,19 +9,26 @@ modules:
       icon: https://response-templates.appbox.ai/assets/images/response-template-dark.svg
       displayConditions:
         or:
-          not:
-            entityPropertyExists:
-              entity: project
-              propertyKey: com.appbox.ai.response.templates_project-admin-settings
+          entityPropertyEqualTo:
+            entity: project
+            propertyKey: com.appbox.ai.response.templates_project-admin-settings
+            objectName: responseTemplatesEnabled
+            value: "true"
           and:
-            entityPropertyExists:
-              entity: project
-              propertyKey: com.appbox.ai.response.templates_project-admin-settings
-            entityPropertyEqualTo:
-              entity: project
-              propertyKey: com.appbox.ai.response.templates_project-admin-settings
-              objectName: responseTemplatesEnabled
-              value: "true"
+            not:
+              entityPropertyExists:
+                entity: project
+                propertyKey: com.appbox.ai.response.templates_project-admin-settings
+                objectName: responseTemplatesEnabled
+            or:
+              entityPropertyEqualTo:
+                entity: app
+                propertyKey: com.appbox.ai.response.templates_default-project-enabled
+                value: "true"
+              not:
+                entityPropertyExists:
+                  entity: app
+                  propertyKey: com.appbox.ai.response.templates_default-project-enabled
   jira:issuePanel:
     - key: response-templates-issue-panel
       resource: main
@@ -31,19 +38,26 @@ modules:
       icon: https://response-templates.appbox.ai/assets/images/response-template-dark.svg
       displayConditions:
         or:
-          not:
-            entityPropertyExists:
-              entity: project
-              propertyKey: com.appbox.ai.response.templates_project-admin-settings
+          entityPropertyEqualTo:
+            entity: project
+            propertyKey: com.appbox.ai.response.templates_project-admin-settings
+            objectName: responseTemplatesEnabled
+            value: "true"
           and:
-            entityPropertyExists:
-              entity: project
-              propertyKey: com.appbox.ai.response.templates_project-admin-settings
-            entityPropertyEqualTo:
-              entity: project
-              propertyKey: com.appbox.ai.response.templates_project-admin-settings
-              objectName: responseTemplatesEnabled
-              value: "true"
+            not:
+              entityPropertyExists:
+                entity: project
+                propertyKey: com.appbox.ai.response.templates_project-admin-settings
+                objectName: responseTemplatesEnabled
+            or:
+              entityPropertyEqualTo:
+                entity: app
+                propertyKey: com.appbox.ai.response.templates_default-project-enabled
+                value: "true"
+              not:
+                entityPropertyExists:
+                  entity: app
+                  propertyKey: com.appbox.ai.response.templates_default-project-enabled
   jira:adminPage:
     - key: response-templates-admin
       resource: main
@@ -58,9 +72,16 @@ modules:
       events:
         - avi:forge:installed:app
         - avi:forge:upgraded:app
+    - key: migrate-default-project-enabled
+      function: migrate-default
+      events:
+        - avi:forge:installed:app
+        - avi:forge:upgraded:app
   function:
     - key: migrate
       handler: index.migrateLegacyTemplates
+    - key: migrate-default
+      handler: index.migrateDefaultProjectEnabled
     - key: resolver
       handler: index.handler
 
