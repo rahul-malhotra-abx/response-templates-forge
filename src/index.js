@@ -485,6 +485,10 @@ async function copyPropertyStoreToStorage(listRoute, valueRoute) {
   });
 
   for (const { key } of keys) {
+    if (key === DEFAULT_PROJECT_ENABLED_KEY) {
+      continue;
+    }
+
     if ((await kvs.get(key)) !== undefined) {
       continue;
     }
@@ -562,11 +566,7 @@ async function writeForgeAppProperty(propertyKey, value) {
  * Display conditions are evaluated against entity properties, so this flag stays in the app
  * property store rather than moving to storage with the templates.
  */
-export async function migrateDefaultProjectEnabled() {
-  if ((await readForgeAppProperty(DEFAULT_PROJECT_ENABLED_KEY)) !== undefined) {
-    return;
-  }
-
+async function adoptLegacyProjectEnabledDefault() {
   const response = await api
     .asApp()
     .requestJira(
@@ -577,14 +577,24 @@ export async function migrateDefaultProjectEnabled() {
     console.log("No legacy project enablement default to carry over", {
       status: response.status,
     });
-    return;
+    return undefined;
   }
 
   const { value } = await parseJsonResponse(response, {
-    operation: "migrateDefaultProjectEnabled",
+    operation: "adoptLegacyProjectEnabledDefault",
   });
-  await writeForgeAppProperty(DEFAULT_PROJECT_ENABLED_KEY, value === true);
-  console.log("Project enablement default carried over", { value });
+  const enabled = value === true;
+  await writeForgeAppProperty(DEFAULT_PROJECT_ENABLED_KEY, enabled);
+  console.log("Project enablement default carried over", { enabled });
+  return enabled;
+}
+
+export async function migrateDefaultProjectEnabled() {
+  if ((await readForgeAppProperty(DEFAULT_PROJECT_ENABLED_KEY)) !== undefined) {
+    return;
+  }
+
+  await adoptLegacyProjectEnabledDefault();
 }
 
 resolver.define("getDefaultProjectEnabled", async () => {
@@ -598,14 +608,16 @@ resolver.define("getDefaultProjectEnabled", async () => {
 
   if (!permissions?.permissions?.ADMINISTER?.havePermission) {
     throw new Error(
-      "Jira administrator rights are required to change project enablement defaults.",
+      "Jira administrator rights are required to read project enablement defaults.",
     );
   }
 
+  const stored = await readForgeAppProperty(DEFAULT_PROJECT_ENABLED_KEY);
+  const enabled =
+    stored === undefined ? await adoptLegacyProjectEnabledDefault() : stored === true;
 
-  // Absent means enabled: that is what the display conditions fall back to.
-  const value = await readForgeAppProperty(DEFAULT_PROJECT_ENABLED_KEY);
-  return { enabled: value === undefined ? true : value === true };
+  // Absent in both stores means enabled: that is what the display conditions fall back to.
+  return { enabled: enabled === undefined ? true : enabled };
 });
 
 resolver.define("setDefaultProjectEnabled", async ({ payload, context }) => {
@@ -623,7 +635,6 @@ resolver.define("setDefaultProjectEnabled", async ({ payload, context }) => {
       "Jira administrator rights are required to change project enablement defaults.",
     );
   }
-
 
   await writeForgeAppProperty(DEFAULT_PROJECT_ENABLED_KEY, payload?.enabled === true);
   return { ok: true };
