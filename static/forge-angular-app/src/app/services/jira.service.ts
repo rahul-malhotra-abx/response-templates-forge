@@ -206,6 +206,14 @@ export class JiraService {
     return await invoke('importLegacyAppProperties');
   }
 
+  static async getDefaultProjectEnabled(): Promise<{ enabled: boolean }> {
+    return await invoke('getDefaultProjectEnabled');
+  }
+
+  static async setDefaultProjectEnabled(enabled: boolean) {
+    return await invoke('setDefaultProjectEnabled', { enabled });
+  }
+
   static async getProjectSettings(projectIdOrKey: any) {
     return await invoke('getProjectSettings', {
       projectIdOrKey,
