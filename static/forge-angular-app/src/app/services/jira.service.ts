@@ -202,6 +202,10 @@ export class JiraService {
     });
   }
 
+  static async importLegacyApplicationProperties(): Promise<{ imported: string[] }> {
+    return await invoke('importLegacyAppProperties');
+  }
+
   static async getProjectSettings(projectIdOrKey: any) {
     return await invoke('getProjectSettings', {
       projectIdOrKey,

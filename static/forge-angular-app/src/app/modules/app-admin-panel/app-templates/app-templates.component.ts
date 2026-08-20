@@ -22,6 +22,7 @@ export class AppTemplatesComponent implements OnInit {
   templates: Template[] = [];
   templateStorageService: StorageService;
   pageLoaded = false;
+  importing = false;
   defaultLimits = DEFAULT_LIMITS;
   currentUser: JiraUserModel;
 
@@ -33,6 +34,37 @@ export class AppTemplatesComponent implements OnInit {
     this.templates = this.templates.sort(UtilsService.dynamicSort('name'));
     this.currentUser = await JiraService.getCurrentJiraUser();
     this.pageLoaded = true;
+  }
+
+  /** Only reachable while the list is empty: the install trigger normally carries templates over. */
+  async importLegacyTemplates() {
+    this.importing = true;
+    try {
+      const { imported } = await JiraService.importLegacyApplicationProperties();
+      if (!imported?.length) {
+        JiraService.showFlag({
+          title: 'Nothing to import',
+          body: 'No global templates were found in the previous version of the app.',
+          type: 'info',
+        });
+        return;
+      }
+
+      this.templates = ((await this.templateStorageService.get()) || []).sort(UtilsService.dynamicSort('name'));
+      JiraService.showFlag({
+        title: 'Templates imported',
+        body: `Restored ${this.templates.length} global template(s) from the previous version.`,
+        type: 'success',
+      });
+    } catch (e) {
+      JiraService.showFlag({
+        title: 'Import failed',
+        body: `${e?.['message'] || e}`,
+        type: 'error',
+      });
+    } finally {
+      this.importing = false;
+    }
   }
 
   static canAddMoreTemplates(templates: Template[]) {
